@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Validacao de Lancamentos Contabeis</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">CT2 Protheus</p>
+            <h1>Validador de lancamentos de fornecedores</h1>
+          </div>
+          <button id="exportBtn" class="icon-button" type="button" title="Exportar divergencias" disabled>
+            <span aria-hidden="true">CSV</span>
+          </button>
+        </header>
+
+        <section class="control-grid" aria-label="Configuracao da analise">
+          <div class="panel upload-panel">
+            <label class="file-drop" for="fileInput">
+              <span class="file-drop__title">Selecionar CT2 mensal</span>
+              <span id="fileName" class="file-drop__meta">CSV ou XLSX com meses anteriores e mes analisado</span>
+            </label>
+            <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
+
+            <div class="fields">
+              <label>
+                Mes analisado
+                <input id="monthInput" type="month" />
+              </label>
+              <label>
+                Prefixos de contas de resultado
+                <input id="resultPrefixes" type="text" value="32" />
+              </label>
+              <label>
+                Palavras ignoradas no historico
+                <textarea id="ignoredWords" rows="3">NF,NFE,NOTA,FISCAL,DOC,DOCUMENTO,PAGTO,PAGAMENTO,REF,REFERENTE,FORN,FORNECEDOR,FORNEC,HIS,HIST,HISTORICO,ENTR,ENTRADA,IRRF,INSS,ISS,RETIDO,RETENCAO,BOLETO,DUPLICATA,FATURA</textarea>
+              </label>
+              <label>
+                Lotes/historicos ignorados
+                <textarea id="excludedPatterns" rows="3">008860,008890,FUNCIONARIOS,AUTONOMOS,FOLHA,FOL/,FO1/,FO2/,FO3/,FO4/,FO5/,DEPRECIACAO,AMORTIZACAO</textarea>
+              </label>
+            </div>
+
+            <button id="analyzeBtn" class="primary-button" type="button" disabled>Analisar lancamentos</button>
+          </div>
+
+          <div class="panel mapping-panel">
+            <h2>Colunas detectadas</h2>
+            <div class="mapping-grid">
+              <label>Data <select id="dateColumn"></select></label>
+              <label>Debito <select id="debitColumn"></select></label>
+              <label>Credito <select id="creditColumn"></select></label>
+              <label>Historico <select id="historyColumn"></select></label>
+            </div>
+            <p id="sampleInfo" class="muted">Carregue um arquivo para ajustar as colunas.</p>
+          </div>
+        </section>
+
+        <section class="summary-strip" aria-label="Resumo da analise">
+          <div>
+            <span id="totalRows">0</span>
+            <small>linhas lidas</small>
+          </div>
+          <div>
+            <span id="resultRows">0</span>
+            <small>lancamentos de resultado</small>
+          </div>
+          <div>
+            <span id="currentRows">0</span>
+            <small>no mes analisado</small>
+          </div>
+          <div>
+            <span id="issueRows">0</span>
+            <small>divergencias</small>
+          </div>
+        </section>
+
+        <section class="results-section">
+          <div class="results-header">
+            <h2>Divergencias encontradas</h2>
+            <input id="searchInput" type="search" placeholder="Filtrar fornecedor, conta ou historico" disabled />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fornecedor extraido</th>
+                  <th>Data</th>
+                  <th>Conta atual</th>
+                  <th>Ultimas contas anteriores</th>
+                  <th>Historico</th>
+                </tr>
+              </thead>
+              <tbody id="resultsBody">
+                <tr>
+                  <td colspan="5" class="empty-state">Nenhum arquivo analisado ainda.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
