@@ -12,10 +12,14 @@ const state = {
 const selectors = {
   fileInput: document.querySelector("#fileInput"),
   supplierFileInput: document.querySelector("#supplierFileInput"),
+  accountPlanFileInput: document.querySelector("#accountPlanFileInput"),
   importBtn: document.querySelector("#importBtn"),
   importSupplierBtn: document.querySelector("#importSupplierBtn"),
+  importAccountPlanBtn: document.querySelector("#importAccountPlanBtn"),
   supplierDrop: document.querySelector("#supplierDrop"),
+  accountPlanDrop: document.querySelector("#accountPlanDrop"),
   supplierFileName: document.querySelector("#supplierFileName"),
+  accountPlanFileName: document.querySelector("#accountPlanFileName"),
   fileName: document.querySelector("#fileName"),
   analyzeBtn: document.querySelector("#analyzeBtn"),
   exportBtn: document.querySelector("#exportBtn"),
@@ -52,8 +56,10 @@ const aliases = {
 
 selectors.fileInput.addEventListener("change", handleFile);
 selectors.supplierFileInput.addEventListener("change", handleSupplierFile);
+selectors.accountPlanFileInput.addEventListener("change", handleAccountPlanFile);
 selectors.importBtn.addEventListener("click", importSelectedFile);
 selectors.importSupplierBtn.addEventListener("click", importSupplierFile);
+selectors.importAccountPlanBtn.addEventListener("click", importAccountPlanFile);
 selectors.analyzeBtn.addEventListener("click", runAnalysis);
 selectors.exportBtn.addEventListener("click", exportIssues);
 selectors.settingsBtn.addEventListener("click", showSettings);
@@ -263,6 +269,15 @@ function handleSupplierFile(event) {
   renderEmpty("Cadastro selecionado. Importe o MATA020 antes da CT2 para melhorar a identificacao dos fornecedores.");
 }
 
+function handleAccountPlanFile(event) {
+  const [file] = event.target.files;
+  if (!file) return;
+
+  selectors.accountPlanFileName.textContent = file.name;
+  selectors.importAccountPlanBtn.disabled = false;
+  renderEmpty("Plano de contas selecionado. Importe para exibir descricoes das contas nas divergencias.");
+}
+
 async function initServerMode() {
   try {
     const response = await fetch("/api/base");
@@ -270,7 +285,9 @@ async function initServerMode() {
 
     state.serverMode = true;
     selectors.supplierDrop.hidden = false;
+    selectors.accountPlanDrop.hidden = false;
     selectors.importSupplierBtn.hidden = false;
+    selectors.importAccountPlanBtn.hidden = false;
     selectors.importBtn.hidden = false;
     selectors.analyzeBtn.disabled = false;
     selectors.fileName.textContent = "Selecionar XLSX ou CSV";
@@ -330,6 +347,7 @@ async function importSelectedFile() {
 
   await importFile(file, {
     button: selectors.importBtn,
+    kind: "ct2",
     progress: "Importando CT2 para a base fixa...",
     waiting: "Importacao em andamento. Meses ja existentes serao substituidos.",
   });
@@ -344,8 +362,24 @@ async function importSupplierFile() {
 
   await importFile(file, {
     button: selectors.importSupplierBtn,
+    kind: "supplier",
     progress: "Importando cadastro MATA020...",
     waiting: "Importacao do cadastro em andamento.",
+  });
+}
+
+async function importAccountPlanFile() {
+  const [file] = selectors.accountPlanFileInput.files;
+  if (!file) {
+    renderEmpty("Selecione o plano de contas para importar.");
+    return;
+  }
+
+  await importFile(file, {
+    button: selectors.importAccountPlanBtn,
+    kind: "accountPlan",
+    progress: "Importando plano de contas...",
+    waiting: "Importacao do plano de contas em andamento.",
   });
 }
 
@@ -360,11 +394,13 @@ async function importFile(file, messages) {
   renderEmpty(messages.waiting);
 
   try {
-    const payload = await uploadFileWithProgress(file, messages.progress);
+    const payload = await uploadFileWithProgress(file, messages.progress, messages.kind);
 
     updateBaseSummary(payload.base);
     if (payload.supplierCount) {
       renderEmpty(`${Number(payload.supplierCount).toLocaleString("pt-BR")} fornecedores importados do cadastro.`);
+    } else if (payload.accountCount) {
+      renderEmpty(`${Number(payload.accountCount).toLocaleString("pt-BR")} contas importadas do plano de contas.`);
     } else {
       renderEmpty(`Base atualizada: ${payload.months.join(", ")}.`);
     }
@@ -425,13 +461,14 @@ function buildAnalysisPayload(month) {
   return form;
 }
 
-function buildUploadPayload(file) {
+function buildUploadPayload(file, kind) {
   const form = new FormData();
   form.append("file", file, file.name);
+  form.append("kind", kind || "ct2");
   return form;
 }
 
-function uploadFileWithProgress(file, label) {
+function uploadFileWithProgress(file, label, kind) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("POST", "/api/upload");
@@ -467,7 +504,7 @@ function uploadFileWithProgress(file, label) {
 
     request.addEventListener("error", () => reject(new Error("Falha de rede durante o upload.")));
     request.addEventListener("abort", () => reject(new Error("Upload cancelado.")));
-    request.send(buildUploadPayload(file));
+    request.send(buildUploadPayload(file, kind));
   });
 }
 
@@ -478,7 +515,7 @@ function updateBaseSummary(base) {
   setMetric("currentRows", months.length);
   setMetric("issueRows", 0);
   selectors.sampleInfo.textContent = months.length
-    ? `Base fixa com ${months.length.toLocaleString("pt-BR")} meses e ${Number(base.supplier_count || 0).toLocaleString("pt-BR")} fornecedores: ${months.map((item) => item.month).join(", ")}.`
+    ? `Base fixa com ${months.length.toLocaleString("pt-BR")} meses, ${Number(base.supplier_count || 0).toLocaleString("pt-BR")} fornecedores e ${Number(base.account_count || 0).toLocaleString("pt-BR")} contas: ${months.map((item) => item.month).join(", ")}.`
     : "Base fixa vazia. Importe um CSV da CT2 para comecar.";
 }
 
@@ -487,6 +524,7 @@ function normalizeServerIssue(row) {
     supplier: row.fornecedor_extraido,
     date: row.data_lcto,
     account: row.conta_atual,
+    accountDescription: row.conta_atual_descricao || "",
     side: row.lado_resultado,
     previousAccounts: parsePreviousAccounts(row.ultimas_contas_anteriores),
     history: row.historico,
@@ -503,8 +541,16 @@ function normalizeServerIssue(row) {
 function parsePreviousAccounts(value) {
   if (!value || value === "Sem historico anterior") return [];
   return value.split(" | ").map((item) => {
-    const match = item.match(/^(.+)\s+\((\d{4}-\d{2}-\d{2})\)$/);
-    return match ? { account: match[1], date: match[2] } : { account: item, date: "" };
+    const match = item.match(/^(.+?)\s+\((\d{4}-\d{2}-\d{2})\)$/);
+    if (!match) return { account: item, description: "", date: "", label: item };
+
+    const [account, description = ""] = match[1].split(/\s+-\s+/, 2);
+    return {
+      account,
+      description,
+      date: match[2],
+      label: match[1],
+    };
   });
 }
 
@@ -773,7 +819,7 @@ function renderIssues(issues) {
   const query = normalizeText(selectors.searchInput.value);
   const columnFilters = getColumnFilters();
   const filtered = sortFilteredIssues(issues.filter((issue) => {
-    if (query && !normalizeText(`${issue.supplier} ${issue.date} ${issue.account} ${formatPreviousAccountsText(issue.previousAccounts)} ${issue.history}`).includes(query)) {
+    if (query && !normalizeText(`${issue.supplier} ${issue.date} ${issue.account} ${issue.accountDescription} ${formatPreviousAccountsText(issue.previousAccounts)} ${issue.history}`).includes(query)) {
       return false;
     }
 
@@ -796,6 +842,7 @@ function renderIssues(issues) {
       <td>${escapeHtml(issue.supplier)}</td>
       <td>${escapeHtml(formatDate(issue.date))}</td>
       <td><strong>${escapeHtml(issue.account)}</strong> <span class="muted">${escapeHtml(issue.side)}</span></td>
+      <td>${escapeHtml(issue.accountDescription)}</td>
       <td>${renderPreviousAccounts(issue.previousAccounts)}</td>
       <td>${escapeHtml(issue.history)}</td>
     `;
@@ -838,7 +885,7 @@ function getIssueColumnValue(issue, column) {
 
 function formatPreviousAccountsText(accounts) {
   if (!accounts.length) return "Sem historico anterior";
-  return accounts.map((item) => `${item.account} ${formatDate(item.date)}`).join(" | ");
+  return accounts.map((item) => `${item.label || item.account} ${formatDate(item.date)}`).join(" | ");
 }
 
 function updateSortIndicators() {
@@ -861,12 +908,12 @@ function setTableControlsEnabled(enabled) {
 function renderPreviousAccounts(accounts) {
   if (!accounts.length) return '<span class="muted">Sem historico anterior</span>';
   return `<div class="account-list">${accounts
-    .map((item) => `<span class="account-chip">${escapeHtml(item.account)} - ${escapeHtml(formatDate(item.date))}</span>`)
+    .map((item) => `<span class="account-chip">${escapeHtml(item.label || item.account)} - ${escapeHtml(formatDate(item.date))}</span>`)
     .join("")}</div>`;
 }
 
 function renderEmpty(message) {
-  selectors.resultsBody.innerHTML = `<tr><td colspan="5" class="empty-state">${escapeHtml(message)}</td></tr>`;
+  selectors.resultsBody.innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(message)}</td></tr>`;
 }
 
 function exportIssues() {
@@ -875,13 +922,14 @@ function exportIssues() {
     return;
   }
 
-  const header = ["fornecedor", "data", "conta_atual", "lado", "ultimas_contas_anteriores", "historico"];
+  const header = ["fornecedor", "data", "conta_atual", "conta_atual_descricao", "lado", "ultimas_contas_anteriores", "historico"];
   const lines = state.issues.map((issue) => [
     issue.supplier,
     issue.date,
     issue.account,
+    issue.accountDescription,
     issue.side,
-    issue.previousAccounts.map((item) => `${item.account} (${item.date})`).join(" | "),
+    issue.previousAccounts.map((item) => `${item.label || item.account} (${item.date})`).join(" | "),
     issue.history,
   ]);
 

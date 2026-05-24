@@ -43,6 +43,10 @@ ALIASES = {
     "debit_occurrence": ["OCORREN DEB", "OCORREN_DEB", "OCORRENCIA DEB", "OCORRENCIA_DEB"],
     "credit_occurrence": ["OCORREN CRD", "OCORREN_CRED", "OCORREN CR", "OCORRENCIA CRD", "OCORRENCIA_CRED"],
 }
+ACCOUNT_PLAN_ALIASES = {
+    "account": ["CT1_CONTA", "CONTA", "CODIGO", "COD CONTA", "CODIGO CONTA", "CTA", "CTA CONTABIL"],
+    "description": ["CT1_DESC01", "CT1_DESC", "DESC MOEDA 1", "DESC CONTA", "DESCRICAO", "DESCRICAO CONTA", "NOME", "NOME CONTA"],
+}
 
 
 def main():
@@ -193,6 +197,7 @@ def export_divergences_from_base(db_path, month, output_path):
     with sqlite3.connect(db_path, timeout=60) as conn:
         create_schema(conn)
         create_supplier_schema(conn)
+        create_account_plan_schema(conn)
         create_settings_schema(conn)
         current_entries = count_month_entries(conn, month)
         total = export_divergences(conn, month, output_path)
@@ -207,15 +212,17 @@ def export_divergences_from_base(db_path, month, output_path):
 def get_base_summary(db_path):
     db_path = Path(db_path)
     if not db_path.exists():
-        return {"months": [], "total_entries": 0, "supplier_count": 0}
+        return {"months": [], "total_entries": 0, "supplier_count": 0, "account_count": 0}
 
     with sqlite3.connect(db_path, timeout=60) as conn:
         create_schema(conn)
         create_import_schema(conn)
         create_supplier_schema(conn)
+        create_account_plan_schema(conn)
         create_settings_schema(conn)
         total_entries = conn.execute("SELECT COUNT(*) FROM lancamentos").fetchone()[0]
         supplier_count = conn.execute("SELECT COUNT(*) FROM fornecedores").fetchone()[0]
+        account_count = conn.execute("SELECT COUNT(*) FROM plano_contas").fetchone()[0]
         rows = conn.execute(
             """
             SELECT l.mes, COUNT(l.id) AS lancamentos_resultado,
@@ -231,6 +238,7 @@ def get_base_summary(db_path):
     return {
         "total_entries": total_entries,
         "supplier_count": supplier_count,
+        "account_count": account_count,
         "months": [
             {
                 "month": month,
@@ -301,7 +309,7 @@ def create_schema(conn):
     ensure_column(conn, "lancamentos", "ocorrencia_resultado", "TEXT")
 
 
-_ALLOWED_TABLES = {"lancamentos", "importacoes", "metadata", "configuracoes", "fornecedores"}
+_ALLOWED_TABLES = {"lancamentos", "importacoes", "metadata", "configuracoes", "fornecedores", "plano_contas"}
 _ALLOWED_COLUMN_TYPES = {"TEXT", "INTEGER", "REAL", "BLOB"}
 
 
@@ -413,6 +421,98 @@ def create_supplier_schema(conn):
     )
 
 
+def create_account_plan_schema(conn):
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS plano_contas (
+          conta TEXT PRIMARY KEY,
+          descricao TEXT NOT NULL,
+          importado_em TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_plano_contas_descricao
+          ON plano_contas (descricao);
+        """
+    )
+
+
+def import_account_plan(source_path, db_path):
+    source_path = Path(source_path)
+    db_path = Path(db_path)
+    if not source_path.exists():
+        raise FileNotFoundError(f"Arquivo nao encontrado: {source_path}")
+
+    imported_at = datetime.now().isoformat(timespec="seconds")
+    batch = []
+    seen = set()
+
+    for row in iter_account_plan_rows(source_path):
+        account = clean_account(row.get("account", ""))
+        description = clean_spaces(row.get("description", ""))
+        if not account or not description or account in seen:
+            continue
+        seen.add(account)
+        batch.append((account, description, imported_at))
+
+    if not batch:
+        raise ValueError("Nenhuma conta valida encontrada no plano de contas.")
+
+    with sqlite3.connect(db_path, timeout=60) as conn:
+        create_account_plan_schema(conn)
+        conn.execute("DELETE FROM plano_contas")
+        conn.executemany(
+            """
+            INSERT INTO plano_contas (conta, descricao, importado_em)
+            VALUES (?, ?, ?)
+            """,
+            batch,
+        )
+        conn.commit()
+
+    return {"imported": len(batch), "db_path": str(db_path)}
+
+
+def iter_account_plan_rows(source_path):
+    suffix = source_path.suffix.lower()
+    if suffix == ".xml":
+        rows = iter_spreadsheet_rows(source_path)
+    elif suffix == ".csv":
+        rows = iter_delimited_rows(source_path)
+    else:
+        raise ValueError("Envie o plano de contas em CSV ou XML.")
+
+    header = None
+    resolved = None
+    for values in rows:
+        if header is None:
+            maybe_resolved = resolve_account_plan_columns(values)
+            if maybe_resolved:
+                header = values
+                resolved = maybe_resolved
+            continue
+
+        row = {header[index]: values[index] if index < len(values) else "" for index in range(len(header))}
+        yield {
+            "account": row.get(resolved["account"], ""),
+            "description": row.get(resolved["description"], ""),
+        }
+
+
+def resolve_account_plan_columns(columns):
+    normalized_aliases = {
+        field: {normalize_text(alias) for alias in aliases}
+        for field, aliases in ACCOUNT_PLAN_ALIASES.items()
+    }
+    normalized_columns = [(column, normalize_text(column)) for column in columns]
+    resolved = {}
+    for field, aliases in normalized_aliases.items():
+        found = next((column for column, normalized_column in normalized_columns if normalized_column in aliases), None)
+        if not found:
+            return None
+        resolved[field] = found
+    return resolved
+
+
 def import_supplier_registry(xml_path, db_path):
     xml_path = Path(xml_path)
     db_path = Path(db_path)
@@ -488,6 +588,22 @@ def iter_spreadsheet_rows(path):
             if values and any(values):
                 yield values
             elem.clear()
+
+
+def iter_delimited_rows(path):
+    with path.open("r", encoding=detect_encoding(path), newline="") as handle:
+        sample = handle.read(8192)
+        handle.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=";,")
+        except csv.Error:
+            dialect = csv.excel
+            dialect.delimiter = ";"
+        reader = csv.reader(handle, dialect)
+        for row in reader:
+            values = [cell.strip().strip('"') for cell in row]
+            if values and any(values):
+                yield values
 
 
 def load_supplier_catalog(conn):
@@ -713,6 +829,7 @@ def insert_batch(conn, batch):
 
 def export_divergences(conn, month, output_path):
     previous = load_previous_accounts(conn, month)
+    account_descriptions = load_account_descriptions(conn)
     current_rows = conn.execute(
         """
         SELECT linha_origem, filial, data_lcto, numero_lote, sub_lote, numero_doc,
@@ -742,6 +859,7 @@ def export_divergences(conn, month, output_path):
                 "fornecedor_extraido",
                 "fornecedor_chave",
                 "conta_atual",
+                "conta_atual_descricao",
                 "lado_resultado",
                 "contrapartida",
                 "valor",
@@ -761,8 +879,9 @@ def export_divergences(conn, month, output_path):
             if comparison_account in previous_comparisons:
                 continue
 
+            current_description = describe_account(account_descriptions, row[8])
             previous_accounts = format_previous_accounts(previous["accounts"].get(supplier_key, {}))
-            writer.writerow([safe_csv_cell(value) for value in [*row[:15], previous_accounts, row[15], row[16]]])
+            writer.writerow([safe_csv_cell(value) for value in [*row[:9], current_description, *row[9:15], previous_accounts, row[15], row[16]]])
             total += 1
 
     return total
@@ -774,6 +893,7 @@ def safe_csv_cell(value):
 
 
 def load_previous_accounts(conn, month):
+    account_descriptions = load_account_descriptions(conn)
     rows = conn.execute(
         """
         SELECT fornecedor_chave, conta_resultado, conta_comparacao, ocorrencia_resultado, MAX(data_lcto) AS ultima_data
@@ -789,7 +909,10 @@ def load_previous_accounts(conn, month):
     for supplier_key, account, _comparison_account, occurrence, last_date in rows:
         comparison_account = comparable_account(account, occurrence)
         previous["comparisons"][supplier_key].add(comparison_account)
-        previous["accounts"][supplier_key][account] = last_date
+        previous["accounts"][supplier_key][account] = {
+            "date": last_date,
+            "description": describe_account(account_descriptions, account),
+        }
 
     return previous
 
@@ -798,8 +921,36 @@ def format_previous_accounts(accounts):
     if not accounts:
         return "Sem historico anterior"
 
-    ordered = sorted(accounts.items(), key=lambda item: item[1], reverse=True)
-    return " | ".join(f"{account} ({date})" for account, date in ordered[:5])
+    ordered = sorted(accounts.items(), key=lambda item: item[1]["date"], reverse=True)
+    return " | ".join(
+        f"{account} - {data['description']} ({data['date']})" if data["description"] else f"{account} ({data['date']})"
+        for account, data in ordered[:5]
+    )
+
+
+def load_account_descriptions(conn):
+    create_account_plan_schema(conn)
+    return dict(conn.execute("SELECT conta, descricao FROM plano_contas").fetchall())
+
+
+def describe_account(account_descriptions, account):
+    account = clean_account(account)
+    if not account:
+        return ""
+    if account in account_descriptions:
+        return account_descriptions[account]
+    comparable = strip_account_nature(account)
+    matches = [
+        description
+        for plan_account, description in account_descriptions.items()
+        if strip_account_nature(plan_account) == comparable
+    ]
+    return matches[0] if len(matches) == 1 else ""
+
+
+def strip_account_nature(account):
+    account = clean_account(account)
+    return account[3:] if account.startswith(("321", "322")) and len(account) > 3 else account
 
 
 def iter_main_rows(source):
@@ -934,6 +1085,10 @@ def parse_date(value):
 
 def clean_account(value):
     return re.sub(r"\D", "", str(value or ""))
+
+
+def clean_spaces(value):
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def is_result_account(account, prefixes):

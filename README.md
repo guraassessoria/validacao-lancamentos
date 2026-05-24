@@ -67,12 +67,15 @@ A tela possui dois pontos de importacao:
 
 1. `Importar cadastro MATA020`: recebe o `mata020.xml` e carrega razao social e
    nome fantasia dos fornecedores.
-2. `Importar CT2 para base fixa`: recebe o CSV da CT2 e atualiza os lancamentos.
+2. `Importar plano de contas`: recebe o `ctba020.xml` e carrega codigo e
+   descricao das contas.
+3. `Importar CT2 para base fixa`: recebe o CSV da CT2 e atualiza os lancamentos.
 
-Importe o `mata020.xml` antes da CT2 para melhorar a identificacao dos
-fornecedores. Durante a importacao da CT2, todos os meses presentes no arquivo
-sao substituidos na base; meses novos sao integrados aos dados ja existentes.
-Depois disso, informe o mes analisado e gere somente o CSV de divergencias.
+Importe o `mata020.xml` e o `ctba020.xml` antes da CT2 para melhorar a
+identificacao dos fornecedores e preencher as descricoes das contas. Durante a
+importacao da CT2, todos os meses presentes no arquivo sao substituidos na base;
+meses novos sao integrados aos dados ja existentes. Depois disso, informe o mes
+analisado e gere somente o CSV de divergencias.
 
 > No GitHub Pages, a aplicacao roda apenas como pagina estatica. O modo com
 > base fixa SQLite, importacao do MATA020 e processamento de arquivos grandes

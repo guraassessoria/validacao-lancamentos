@@ -199,7 +199,8 @@ small {
 }
 
 #fileInput,
-#supplierFileInput {
+#supplierFileInput,
+#accountPlanFileInput {
   position: absolute;
   inline-size: 1px;
   block-size: 1px;
@@ -213,7 +214,7 @@ small {
 
 .upload-actions {
   display: grid;
-  grid-template-columns: minmax(210px, 1fr) minmax(130px, 0.35fr) minmax(210px, 1fr) minmax(130px, 0.35fr) minmax(190px, 0.55fr);
+  grid-template-columns: minmax(170px, 1fr) minmax(112px, 0.35fr) minmax(170px, 1fr) minmax(112px, 0.35fr) minmax(170px, 1fr) minmax(112px, 0.35fr) minmax(170px, 0.55fr);
   gap: 10px;
   align-items: end;
 }
@@ -359,7 +360,7 @@ textarea {
 
 table {
   width: 100%;
-  min-width: 980px;
+  min-width: 1220px;
   border-collapse: collapse;
 }
 

@@ -12,6 +12,7 @@ from .analisar_divergencias import (
     export_divergences_from_base,
     get_settings,
     get_base_summary,
+    import_account_plan,
     import_file_into_base,
     import_supplier_registry,
     save_settings,
@@ -119,11 +120,13 @@ def write_settings(
 
 
 @app.post("/api/upload")
-def upload_base(file: UploadFile = File(...)):
+def upload_base(file: UploadFile = File(...), kind: str = Form("ct2")):
     target = save_upload(file)
 
     try:
-        if target.suffix.lower() == ".xml":
+        if kind == "supplier":
+            if target.suffix.lower() != ".xml":
+                raise HTTPException(status_code=400, detail="Envie o cadastro de fornecedores em XML.")
             result = import_supplier_registry(target, DB_PATH)
             persist_sqlite(DB_PATH)
             return {
@@ -134,8 +137,24 @@ def upload_base(file: UploadFile = File(...)):
                 "base": get_base_summary(DB_PATH),
             }
 
+        if kind == "accountPlan":
+            if target.suffix.lower() not in {".csv", ".xml"}:
+                raise HTTPException(status_code=400, detail="Envie o plano de contas em CSV ou XML.")
+            result = import_account_plan(target, DB_PATH)
+            persist_sqlite(DB_PATH)
+            return {
+                "file": target.name,
+                "accountCount": result["imported"],
+                "months": [],
+                "imported": result["imported"],
+                "base": get_base_summary(DB_PATH),
+            }
+
+        if kind != "ct2":
+            raise HTTPException(status_code=400, detail="Tipo de importacao invalido.")
+
         if target.suffix.lower() != ".csv":
-            raise HTTPException(status_code=400, detail="Envie um CSV da CT2 ou XML do MATA020.")
+            raise HTTPException(status_code=400, detail="Envie um CSV da CT2.")
 
         result = import_file_into_base(target, DB_PATH, verbose=True)
         persist_sqlite(DB_PATH)
@@ -187,7 +206,7 @@ def download(file_name: str):
 def save_upload(file: UploadFile):
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in {".csv", ".xml"}:
-        raise HTTPException(status_code=400, detail="Envie um CSV da CT2 ou XML do MATA020.")
+        raise HTTPException(status_code=400, detail="Envie um arquivo CSV ou XML.")
 
     name = f"{safe_slug(Path(file.filename or 'upload').stem)}_{uuid.uuid4().hex}{suffix}"
     target = UPLOAD_DIR / name
