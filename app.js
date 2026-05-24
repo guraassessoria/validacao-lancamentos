@@ -279,15 +279,16 @@ async function runServerAnalysis() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || payload.detail || "Falha ao analisar o arquivo.");
 
+    const serverRows = payload.divergences || payload.preview || [];
     state.serverOutputUrl = payload.downloadUrl;
-    state.issues = payload.preview.map(normalizeServerIssue);
+    state.issues = serverRows.map(normalizeServerIssue);
     setMetric("totalRows", payload.imported);
     setMetric("resultRows", payload.imported);
     setMetric("currentRows", payload.currentEntries);
     setMetric("issueRows", payload.total);
-    selectors.sampleInfo.textContent = `${Number(payload.total).toLocaleString("pt-BR")} divergencias geradas. A tabela mostra uma amostra inicial.`;
+    selectors.sampleInfo.textContent = `${Number(payload.total).toLocaleString("pt-BR")} divergencias geradas. A tabela mostra todos os lancamentos do mes analisado.`;
     selectors.exportBtn.disabled = payload.total === 0;
-    selectors.searchInput.disabled = payload.preview.length === 0;
+    selectors.searchInput.disabled = state.issues.length === 0;
     renderIssues(state.issues);
   } catch (error) {
     renderEmpty(error.message);
@@ -757,6 +758,7 @@ function renderIssues(issues) {
   }
 
   selectors.resultsBody.innerHTML = "";
+  const fragment = document.createDocumentFragment();
   filtered.forEach((issue) => {
     const row = document.createElement("tr");
     row.innerHTML = `
@@ -766,8 +768,9 @@ function renderIssues(issues) {
       <td>${renderPreviousAccounts(issue.previousAccounts)}</td>
       <td>${escapeHtml(issue.history)}</td>
     `;
-    selectors.resultsBody.append(row);
+    fragment.append(row);
   });
+  selectors.resultsBody.append(fragment);
 }
 
 function renderPreviousAccounts(accounts) {

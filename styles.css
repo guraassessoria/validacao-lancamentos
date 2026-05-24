@@ -328,6 +328,7 @@ textarea {
 }
 
 .table-wrap {
+  max-height: min(62vh, 680px);
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 8px;

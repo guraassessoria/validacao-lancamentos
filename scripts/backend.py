@@ -129,16 +129,17 @@ def analyze_month(mes: str = Form(...)):
     output = OUTPUT_DIR / f"divergencias_base_{mes}.csv"
     try:
         result = export_divergences_from_base(DB_PATH, mes, output)
-        preview = load_preview(output)
+        divergences = load_divergences(output)
         summary = get_base_summary(DB_PATH)
         return {
             "total": result["total"],
             "imported": summary["total_entries"],
             "currentEntries": result["current_entries"],
-            "previewCount": len(preview),
+            "previewCount": len(divergences),
             "output": output.name,
             "downloadUrl": f"/api/download/{output.name}",
-            "preview": preview,
+            "preview": divergences,
+            "divergences": divergences,
         }
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -166,12 +167,12 @@ def save_upload(file: UploadFile):
     return target
 
 
-def load_preview(output):
+def load_divergences(output):
     import csv
 
     with output.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle, delimiter=";")
-        return [row for _, row in zip(range(50), reader)]
+        return list(reader)
 
 
 def safe_output_path(file_name):
