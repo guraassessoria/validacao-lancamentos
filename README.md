@@ -24,6 +24,9 @@ O backend usa a pasta `data/` por padrao. Em hospedagem, configure a variavel
 `DATA_DIR` para apontar para um disco persistente. No Render, o `render.yaml`
 ja monta `/var/data` e define `DATA_DIR=/var/data`.
 
+Defina tambem `APP_PASSWORD` no ambiente online. Quando essa variavel existe,
+a aplicacao exige senha via autenticacao basica do navegador.
+
 ### Analise local com SQLite
 
 Este e o caminho recomendado para arquivos grandes. O script le a CT2 em streaming,

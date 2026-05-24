@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 import os
+import base64
+import secrets
 import shutil
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .analisar_divergencias import (
@@ -22,6 +24,29 @@ OUTPUT_DIR = DATA_DIR / "saida"
 DB_PATH = DATA_DIR / "ct2_base.db"
 
 app = FastAPI(title="Validador CT2", version="1.0.0")
+
+
+@app.middleware("http")
+async def basic_auth(request: Request, call_next):
+    password = os.getenv("APP_PASSWORD", "")
+    if not password:
+        return await call_next(request)
+
+    authorization = request.headers.get("Authorization", "")
+    if authorization.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(authorization.removeprefix("Basic ")).decode("utf-8")
+            _user, supplied_password = decoded.split(":", 1)
+            if secrets.compare_digest(supplied_password, password):
+                return await call_next(request)
+        except Exception:
+            pass
+
+    return Response(
+        "Autenticacao requerida.",
+        status_code=401,
+        headers={"WWW-Authenticate": 'Basic realm="Validador CT2"'},
+    )
 
 
 @app.on_event("startup")
