@@ -62,9 +62,6 @@ UPLOAD_MAX_AGE_HOURS = int(os.getenv("UPLOAD_MAX_AGE_HOURS", "24"))
 
 @app.on_event("startup")
 def startup():
-    if running_online() and not os.getenv("APP_PASSWORD"):
-        raise RuntimeError("APP_PASSWORD precisa estar configurado no ambiente online.")
-
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
