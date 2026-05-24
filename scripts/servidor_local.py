@@ -110,6 +110,8 @@ class LocalHandler(BaseHTTPRequestHandler):
 
     def read_json(self):
         length = int(self.headers.get("Content-Length", "0"))
+        if length > 64 * 1024:  # 64 KB é mais que suficiente para qualquer payload JSON
+            raise ValueError("Payload JSON muito grande.")
         raw = self.rfile.read(length)
         return json.loads(raw.decode("utf-8") or "{}")
 

@@ -153,7 +153,8 @@ def upload_base(file: UploadFile = File(...)):
 
 @app.post("/api/analyze")
 def analyze_month(mes: str = Form(...)):
-    if not mes or len(mes) != 7:
+    import re
+    if not mes or not re.fullmatch(r"\d{4}-\d{2}", mes):
         raise HTTPException(status_code=400, detail="Informe o mes no formato AAAA-MM.")
 
     output = OUTPUT_DIR / f"divergencias_base_{mes}.csv"
@@ -222,7 +223,7 @@ def load_divergences(output):
 
 def safe_output_path(file_name):
     path = (OUTPUT_DIR / Path(file_name).name).resolve()
-    if path.parent != OUTPUT_DIR:
+    if path.parent != OUTPUT_DIR.resolve():
         raise HTTPException(status_code=400, detail="Arquivo invalido.")
     return path
 
