@@ -795,7 +795,7 @@ function renderIssues(issues) {
     row.innerHTML = `
       <td>${escapeHtml(issue.supplier)}</td>
       <td>${escapeHtml(formatDate(issue.date))}</td>
-      <td><strong>${escapeHtml(issue.account)}</strong> <span class="muted">${issue.side}</span></td>
+      <td><strong>${escapeHtml(issue.account)}</strong> <span class="muted">${escapeHtml(issue.side)}</span></td>
       <td>${renderPreviousAccounts(issue.previousAccounts)}</td>
       <td>${escapeHtml(issue.history)}</td>
     `;

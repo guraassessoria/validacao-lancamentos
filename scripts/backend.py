@@ -55,6 +55,9 @@ async def basic_auth(request: Request, call_next):
     ))
 
 
+UPLOAD_MAX_AGE_HOURS = int(os.getenv("UPLOAD_MAX_AGE_HOURS", "24"))
+
+
 @app.on_event("startup")
 def startup():
     if running_online() and not os.getenv("APP_PASSWORD"):
@@ -63,6 +66,7 @@ def startup():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    purge_old_uploads()
     hydrate_sqlite(DB_PATH)
 
 
@@ -242,6 +246,15 @@ def add_security_headers(response):
     if running_online():
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     return response
+
+
+def purge_old_uploads():
+    import time
+
+    cutoff = time.time() - UPLOAD_MAX_AGE_HOURS * 3600
+    for path in UPLOAD_DIR.iterdir():
+        if path.is_file() and path.stat().st_mtime < cutoff:
+            path.unlink(missing_ok=True)
 
 
 def running_online():

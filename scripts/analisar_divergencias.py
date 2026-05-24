@@ -301,10 +301,20 @@ def create_schema(conn):
     ensure_column(conn, "lancamentos", "ocorrencia_resultado", "TEXT")
 
 
+_ALLOWED_TABLES = {"lancamentos", "importacoes", "metadata", "configuracoes", "fornecedores"}
+_ALLOWED_COLUMN_TYPES = {"TEXT", "INTEGER", "REAL", "BLOB"}
+
+
 def ensure_column(conn, table, column, definition):
-    columns = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if table not in _ALLOWED_TABLES:
+        raise ValueError(f"Tabela nao permitida: {table}")
+    if definition not in _ALLOWED_COLUMN_TYPES:
+        raise ValueError(f"Tipo de coluna nao permitido: {definition}")
+    if not column.replace("_", "").isalnum():
+        raise ValueError(f"Nome de coluna invalido: {column}")
+    columns = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}  # noqa: S608
     if column not in columns:
-        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")  # noqa: S608
 
 
 def create_import_schema(conn):

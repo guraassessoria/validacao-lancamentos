@@ -23,6 +23,19 @@ UPLOAD_DIR = ROOT / "uploads"
 BASE_DB = DB_DIR / "ct2_base.db"
 HOST = "127.0.0.1"
 PORT = 8000
+MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
+
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
+        "style-src 'self'; img-src 'self' data:; connect-src 'self'; "
+        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    ),
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+}
 
 
 class LocalHandler(BaseHTTPRequestHandler):
@@ -103,6 +116,8 @@ class LocalHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        for header, value in _SECURITY_HEADERS.items():
+            self.send_header(header, value)
         self.end_headers()
         self.wfile.write(data)
 
@@ -135,6 +150,8 @@ class LocalHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(data)))
+            for header, value in _SECURITY_HEADERS.items():
+                self.send_header(header, value)
             self.end_headers()
             self.wfile.write(data)
         except OSError as exc:
@@ -214,24 +231,29 @@ def save_upload(file_name, input_stream, length):
     if length <= 0:
         raise ValueError("Arquivo vazio.")
 
+    if length > MAX_UPLOAD_BYTES:
+        raise ValueError(f"Arquivo excede o limite de {MAX_UPLOAD_BYTES // 1024 // 1024} MB.")
+
     decoded = unquote(file_name or "")
     name = Path(decoded).name
     if not name.lower().endswith((".csv", ".xml")):
         raise ValueError("Envie um arquivo CSV da CT2 ou XML do MATA020.")
 
     UPLOAD_DIR.mkdir(exist_ok=True)
-    target = UPLOAD_DIR / f"{safe_slug(Path(name).stem)}{Path(name).suffix.lower()}"
+    import uuid
+    target = UPLOAD_DIR / f"{safe_slug(Path(name).stem)}_{uuid.uuid4().hex}{Path(name).suffix.lower()}"
 
-    remaining = length
+    copied = 0
     with target.open("wb") as handle:
-        while remaining > 0:
-            chunk = input_stream.read(min(1024 * 1024, remaining))
+        while copied < length:
+            chunk = input_stream.read(min(1024 * 1024, length - copied))
             if not chunk:
                 break
+            copied += len(chunk)
             handle.write(chunk)
-            remaining -= len(chunk)
 
-    if remaining != 0:
+    if copied != length:
+        target.unlink(missing_ok=True)
         raise ValueError("Upload incompleto.")
 
     return target
