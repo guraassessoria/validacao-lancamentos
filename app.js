@@ -2,10 +2,13 @@ const state = {
   rows: [],
   columns: [],
   issues: [],
+  serverMode: false,
+  serverOutputUrl: "",
 };
 
 const selectors = {
   fileInput: document.querySelector("#fileInput"),
+  importBtn: document.querySelector("#importBtn"),
   fileName: document.querySelector("#fileName"),
   analyzeBtn: document.querySelector("#analyzeBtn"),
   exportBtn: document.querySelector("#exportBtn"),
@@ -17,6 +20,7 @@ const selectors = {
   debitColumn: document.querySelector("#debitColumn"),
   creditColumn: document.querySelector("#creditColumn"),
   historyColumn: document.querySelector("#historyColumn"),
+  mappingPanel: document.querySelector("#mappingPanel"),
   sampleInfo: document.querySelector("#sampleInfo"),
   resultsBody: document.querySelector("#resultsBody"),
   searchInput: document.querySelector("#searchInput"),
@@ -34,15 +38,24 @@ const aliases = {
 };
 
 selectors.fileInput.addEventListener("change", handleFile);
+selectors.importBtn.addEventListener("click", importSelectedFile);
 selectors.analyzeBtn.addEventListener("click", runAnalysis);
 selectors.exportBtn.addEventListener("click", exportIssues);
 selectors.searchInput.addEventListener("input", () => renderIssues(state.issues));
+initServerMode();
 
 async function handleFile(event) {
   const [file] = event.target.files;
   if (!file) return;
 
   selectors.fileName.textContent = file.name;
+
+  if (state.serverMode) {
+    selectors.importBtn.disabled = false;
+    renderEmpty("Arquivo selecionado. Importe para atualizar a base fixa.");
+    return;
+  }
+
   const extension = file.name.split(".").pop().toLowerCase();
   const rows = extension === "csv" ? await readCsv(file) : await readWorkbook(file);
 
@@ -50,6 +63,7 @@ async function handleFile(event) {
   state.rows = enrichedRows;
   state.columns = collectColumns(rows);
   populateColumnSelectors(state.columns);
+  selectors.mappingPanel.hidden = false;
   selectors.analyzeBtn.disabled = enrichedRows.length === 0;
   selectors.sampleInfo.textContent = `${enrichedRows.length.toLocaleString("pt-BR")} linhas principais carregadas. Confira as colunas antes de analisar.`;
   setMetric("totalRows", enrichedRows.length);
@@ -159,6 +173,11 @@ function findColumn(columns, candidates) {
 }
 
 function runAnalysis() {
+  if (state.serverMode) {
+    runServerAnalysis();
+    return;
+  }
+
   if (!selectors.monthInput.value) {
     renderEmpty("Informe o mes analisado antes de executar.");
     return;
@@ -185,6 +204,138 @@ function runAnalysis() {
   selectors.exportBtn.disabled = state.issues.length === 0;
   selectors.searchInput.disabled = state.issues.length === 0;
   renderIssues(state.issues);
+}
+
+async function initServerMode() {
+  try {
+    const response = await fetch("/api/base");
+    if (!response.ok) return;
+
+    state.serverMode = true;
+    selectors.importBtn.hidden = false;
+    selectors.analyzeBtn.disabled = false;
+    selectors.fileName.textContent = "Selecione uma CT2 para importar ou analise a base ja carregada";
+    updateBaseSummary(await response.json());
+  } catch {
+    state.serverMode = false;
+  }
+}
+
+async function runServerAnalysis() {
+  if (!selectors.monthInput.value) {
+    renderEmpty("Informe o mes analisado antes de executar.");
+    return;
+  }
+
+  selectors.analyzeBtn.disabled = true;
+  selectors.exportBtn.disabled = true;
+  selectors.searchInput.disabled = true;
+  selectors.sampleInfo.textContent = "Processando CT2 no SQLite local...";
+  renderEmpty("Analise em andamento. Arquivos grandes podem levar alguns segundos.");
+
+  try {
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mes: selectors.monthInput.value,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Falha ao analisar o arquivo.");
+
+    state.serverOutputUrl = payload.downloadUrl;
+    state.issues = payload.preview.map(normalizeServerIssue);
+    setMetric("totalRows", payload.imported);
+    setMetric("resultRows", payload.imported);
+    setMetric("currentRows", payload.currentEntries);
+    setMetric("issueRows", payload.total);
+    selectors.sampleInfo.textContent = `${Number(payload.total).toLocaleString("pt-BR")} divergencias geradas. A tabela mostra uma amostra inicial.`;
+    selectors.exportBtn.disabled = payload.total === 0;
+    selectors.searchInput.disabled = payload.preview.length === 0;
+    renderIssues(state.issues);
+  } catch (error) {
+    renderEmpty(error.message);
+    selectors.sampleInfo.textContent = "Nao foi possivel concluir a analise.";
+  } finally {
+    selectors.analyzeBtn.disabled = false;
+  }
+}
+
+async function importSelectedFile() {
+  const [file] = selectors.fileInput.files;
+  if (!file) {
+    renderEmpty("Selecione um CSV da CT2 para importar.");
+    return;
+  }
+
+  selectors.importBtn.disabled = true;
+  selectors.analyzeBtn.disabled = true;
+  selectors.sampleInfo.textContent = "Importando arquivo para a base fixa...";
+  renderEmpty("Importacao em andamento. Meses ja existentes serao substituidos.");
+
+  try {
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "X-File-Name": encodeURIComponent(file.name),
+      },
+      body: file,
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Falha ao importar o arquivo.");
+
+    updateBaseSummary(payload.base);
+    if (payload.supplierCount) {
+      renderEmpty(`${Number(payload.supplierCount).toLocaleString("pt-BR")} fornecedores importados do cadastro.`);
+    } else {
+      renderEmpty(`Base atualizada: ${payload.months.join(", ")}.`);
+    }
+  } catch (error) {
+    selectors.sampleInfo.textContent = "Nao foi possivel importar o arquivo.";
+    renderEmpty(error.message);
+  } finally {
+    selectors.importBtn.disabled = false;
+    selectors.analyzeBtn.disabled = false;
+  }
+}
+
+function updateBaseSummary(base) {
+  const months = base.months || [];
+  setMetric("totalRows", base.total_entries || 0);
+  setMetric("resultRows", base.total_entries || 0);
+  setMetric("currentRows", months.length);
+  setMetric("issueRows", 0);
+  selectors.sampleInfo.textContent = months.length
+    ? `Base fixa com ${months.length.toLocaleString("pt-BR")} meses e ${Number(base.supplier_count || 0).toLocaleString("pt-BR")} fornecedores: ${months.map((item) => item.month).join(", ")}.`
+    : "Base fixa vazia. Importe um CSV da CT2 para comecar.";
+}
+
+function normalizeServerIssue(row) {
+  return {
+    supplier: row.fornecedor_extraido,
+    date: row.data_lcto,
+    account: row.conta_atual,
+    side: row.lado_resultado,
+    previousAccounts: parsePreviousAccounts(row.ultimas_contas_anteriores),
+    history: row.historico,
+    rowNumber: row.linha_origem,
+    document: row.numero_doc,
+    lot: row.numero_lote,
+    value: row.valor,
+    debitOccurrence: row.ocorren_deb,
+    creditOccurrence: row.ocorren_crd,
+    resultOccurrence: row.ocorrencia_resultado,
+  };
+}
+
+function parsePreviousAccounts(value) {
+  if (!value || value === "Sem historico anterior") return [];
+  return value.split(" | ").map((item) => {
+    const match = item.match(/^(.+)\s+\((\d{4}-\d{2}-\d{2})\)$/);
+    return match ? { account: match[1], date: match[2] } : { account: item, date: "" };
+  });
 }
 
 function getConfig() {
@@ -485,6 +636,11 @@ function renderEmpty(message) {
 }
 
 function exportIssues() {
+  if (state.serverOutputUrl) {
+    window.location.href = state.serverOutputUrl;
+    return;
+  }
+
   const header = ["fornecedor", "data", "conta_atual", "lado", "ultimas_contas_anteriores", "historico"];
   const lines = state.issues.map((issue) => [
     issue.supplier,
@@ -516,6 +672,13 @@ function formatDate(date) {
 
 function setMetric(id, value) {
   selectors[id].textContent = Number(value).toLocaleString("pt-BR");
+}
+
+function formatBytes(value) {
+  const size = Number(value);
+  if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
+  if (size >= 1024) return `${(size / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} KB`;
+  return `${size} B`;
 }
 
 function escapeHtml(value) {

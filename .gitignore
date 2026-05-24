@@ -1,0 +1,9 @@
+*.db
+*.db-shm
+*.db-wal
+divergencias_*.csv
+bancos/
+saida/
+uploads/
+mata020.xml
+__pycache__/

@@ -4,6 +4,59 @@ Aplicacao web estatica para validar lancamentos da tabela CT2 do Protheus.
 
 ## Como usar
 
+### Analise local com SQLite
+
+Este e o caminho recomendado para arquivos grandes. O script le a CT2 em streaming,
+grava os lancamentos de resultado em um SQLite local e exporta somente as
+divergencias do mes analisado.
+
+Para usar no navegador com base fixa, inicie o servidor local:
+
+```powershell
+python scripts\servidor_local.py
+```
+
+Depois abra:
+
+```text
+http://127.0.0.1:8000
+```
+
+A tela permite importar o XML do MATA020 e arquivos CSV da CT2 para uma base
+SQLite fixa. Importe o `mata020.xml` para carregar razao social e nome fantasia
+dos fornecedores; depois importe a CT2. Durante a importacao da CT2, todos os
+meses presentes no arquivo sao substituidos na base; meses novos sao integrados
+aos dados ja existentes. Depois disso, informe o mes analisado e gere somente o
+CSV de divergencias.
+
+> No GitHub Pages, a aplicacao roda apenas como pagina estatica. O modo com
+> base fixa SQLite, importacao do MATA020 e processamento de arquivos grandes
+> exige o servidor local Python.
+
+Tambem e possivel rodar direto pelo terminal:
+
+```powershell
+python scripts\analisar_divergencias.py --arquivo ct2_dados_2025-01-01_2026-04-30.csv --mes 2026-04 --db ct2.db --saida divergencias_2026-04.csv --recriar
+```
+
+Para rodar novamente no mesmo arquivo e banco, o `--recriar` pode ser omitido:
+
+```powershell
+python scripts\analisar_divergencias.py --arquivo ct2_dados_2025-01-01_2026-04-30.csv --mes 2026-04 --db ct2.db --saida divergencias_2026-04.csv
+```
+
+O CSV gerado contem apenas divergencias: lancamentos do mes analisado em que o
+fornecedor usa uma conta de resultado que nao apareceu para ele nos meses
+anteriores.
+
+Para contas iniciadas por `321` e `322`, a comparacao considera a ocorrencia do
+lancamento. Quando `Ocorren Deb` ou `Ocorren Crd` for `18`, a natureza esperada
+e `322`; quando for diferente de `18`, a natureza esperada e `321`. Se a unica
+diferenca entre historico e mes atual for essa natureza de custo/despesa, a linha
+nao e tratada como divergencia.
+
+### Tela estatica
+
 1. Abra `index.html` no navegador.
 2. Selecione um arquivo CSV, XLSX ou XLS da CT2.
 3. Informe o mes analisado.

@@ -27,7 +27,7 @@
               <span class="file-drop__title">Selecionar CT2 mensal</span>
               <span id="fileName" class="file-drop__meta">CSV ou XLSX com meses anteriores e mes analisado</span>
             </label>
-            <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
+            <input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.xml" />
 
             <div class="fields">
               <label>
@@ -48,10 +48,11 @@
               </label>
             </div>
 
+            <button id="importBtn" class="secondary-button" type="button" hidden disabled>Importar para base fixa</button>
             <button id="analyzeBtn" class="primary-button" type="button" disabled>Analisar lancamentos</button>
           </div>
 
-          <div class="panel mapping-panel">
+          <div id="mappingPanel" class="panel mapping-panel" hidden>
             <h2>Colunas detectadas</h2>
             <div class="mapping-grid">
               <label>Data <select id="dateColumn"></select></label>
