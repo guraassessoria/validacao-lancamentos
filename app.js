@@ -236,13 +236,10 @@ async function runServerAnalysis() {
   try {
     const response = await fetch("/api/analyze", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mes: selectors.monthInput.value,
-      }),
+      body: buildAnalysisPayload(selectors.monthInput.value),
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "Falha ao analisar o arquivo.");
+    if (!response.ok) throw new Error(payload.error || payload.detail || "Falha ao analisar o arquivo.");
 
     state.serverOutputUrl = payload.downloadUrl;
     state.issues = payload.preview.map(normalizeServerIssue);
@@ -277,14 +274,10 @@ async function importSelectedFile() {
   try {
     const response = await fetch("/api/upload", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "X-File-Name": encodeURIComponent(file.name),
-      },
-      body: file,
+      body: buildUploadPayload(file),
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "Falha ao importar o arquivo.");
+    if (!response.ok) throw new Error(payload.error || payload.detail || "Falha ao importar o arquivo.");
 
     updateBaseSummary(payload.base);
     if (payload.supplierCount) {
@@ -299,6 +292,18 @@ async function importSelectedFile() {
     selectors.importBtn.disabled = false;
     selectors.analyzeBtn.disabled = false;
   }
+}
+
+function buildAnalysisPayload(month) {
+  const form = new FormData();
+  form.append("mes", month);
+  return form;
+}
+
+function buildUploadPayload(file) {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  return form;
 }
 
 function updateBaseSummary(base) {

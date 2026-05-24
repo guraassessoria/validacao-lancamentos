@@ -4,6 +4,26 @@ Aplicacao web estatica para validar lancamentos da tabela CT2 do Protheus.
 
 ## Como usar
 
+### Backend web
+
+Este e o caminho para rodar a aplicacao completa online ou localmente com API,
+upload, SQLite e download do CSV de divergencias.
+
+```powershell
+pip install -r requirements.txt
+uvicorn scripts.backend:app --reload --host 127.0.0.1 --port 8000
+```
+
+Depois abra:
+
+```text
+http://127.0.0.1:8000
+```
+
+O backend usa a pasta `data/` por padrao. Em hospedagem, configure a variavel
+`DATA_DIR` para apontar para um disco persistente. No Render, o `render.yaml`
+ja monta `/var/data` e define `DATA_DIR=/var/data`.
+
 ### Analise local com SQLite
 
 Este e o caminho recomendado para arquivos grandes. O script le a CT2 em streaming,

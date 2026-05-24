@@ -5,5 +5,6 @@ divergencias_*.csv
 bancos/
 saida/
 uploads/
+data/
 mata020.xml
 __pycache__/
