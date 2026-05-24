@@ -11,9 +11,11 @@ from fastapi.staticfiles import StaticFiles
 
 from .analisar_divergencias import (
     export_divergences_from_base,
+    get_settings,
     get_base_summary,
     import_file_into_base,
     import_supplier_registry,
+    save_settings,
 )
 from .neon_state import enabled as neon_enabled
 from .neon_state import hydrate_sqlite, persist_sqlite
@@ -67,6 +69,23 @@ def health():
 @app.get("/api/base")
 def base_summary():
     return get_base_summary(DB_PATH)
+
+
+@app.get("/api/settings")
+def read_settings():
+    hydrate_sqlite(DB_PATH)
+    return get_settings(DB_PATH)
+
+
+@app.post("/api/settings")
+def write_settings(
+    resultPrefixes: str = Form(...),
+    ignoredWords: str = Form(...),
+    excludedPatterns: str = Form(...),
+):
+    save_settings(DB_PATH, resultPrefixes, ignoredWords, excludedPatterns)
+    persist_sqlite(DB_PATH)
+    return get_settings(DB_PATH)
 
 
 @app.post("/api/upload")

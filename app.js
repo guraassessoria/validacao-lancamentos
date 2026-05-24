@@ -4,6 +4,7 @@ const state = {
   issues: [],
   serverMode: false,
   serverOutputUrl: "",
+  settingsTimer: null,
 };
 
 const selectors = {
@@ -48,6 +49,9 @@ selectors.importSupplierBtn.addEventListener("click", importSupplierFile);
 selectors.analyzeBtn.addEventListener("click", runAnalysis);
 selectors.exportBtn.addEventListener("click", exportIssues);
 selectors.searchInput.addEventListener("input", () => renderIssues(state.issues));
+[selectors.resultPrefixes, selectors.ignoredWords, selectors.excludedPatterns].forEach((control) => {
+  control.addEventListener("input", scheduleSettingsSave);
+});
 initServerMode();
 
 async function handleFile(event) {
@@ -232,6 +236,7 @@ async function initServerMode() {
     selectors.importBtn.hidden = false;
     selectors.analyzeBtn.disabled = false;
     selectors.fileName.textContent = "Selecione uma CT2 para importar ou analise a base ja carregada";
+    await loadSettings();
     updateBaseSummary(await response.json());
   } catch {
     state.serverMode = false;
@@ -305,6 +310,10 @@ async function importSupplierFile() {
 }
 
 async function importFile(file, messages) {
+  if (state.serverMode) {
+    await saveSettings();
+  }
+
   messages.button.disabled = true;
   selectors.analyzeBtn.disabled = true;
   selectors.sampleInfo.textContent = messages.progress;
@@ -325,6 +334,48 @@ async function importFile(file, messages) {
   } finally {
     messages.button.disabled = false;
     selectors.analyzeBtn.disabled = false;
+  }
+}
+
+function scheduleSettingsSave() {
+  if (!state.serverMode) return;
+  clearTimeout(state.settingsTimer);
+  state.settingsTimer = setTimeout(() => {
+    saveSettings().catch(() => {
+      selectors.sampleInfo.textContent = "Nao foi possivel salvar as configuracoes automaticamente.";
+    });
+  }, 700);
+}
+
+async function loadSettings() {
+  try {
+    const response = await fetch("/api/settings");
+    if (!response.ok) return;
+    const settings = await response.json();
+    selectors.resultPrefixes.value = settings.resultPrefixes || selectors.resultPrefixes.value;
+    selectors.ignoredWords.value = settings.ignoredWords || selectors.ignoredWords.value;
+    selectors.excludedPatterns.value = settings.excludedPatterns || selectors.excludedPatterns.value;
+  } catch {
+    // Mantem os padroes da tela se o backend nao responder.
+  }
+}
+
+async function saveSettings() {
+  if (!state.serverMode) return;
+  clearTimeout(state.settingsTimer);
+
+  const form = new FormData();
+  form.append("resultPrefixes", selectors.resultPrefixes.value);
+  form.append("ignoredWords", selectors.ignoredWords.value);
+  form.append("excludedPatterns", selectors.excludedPatterns.value);
+
+  const response = await fetch("/api/settings", {
+    method: "POST",
+    body: form,
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || payload.detail || "Falha ao salvar configuracoes.");
   }
 }
 

@@ -21,6 +21,11 @@ DEFAULT_EXCLUDED_PATTERNS = (
     "008860,008890,FUNCIONARIOS,AUTONOMOS,FOLHA,FOL/,FO1/,FO2/,FO3/,FO4/,"
     "FO5/,DEPRECIACAO,AMORTIZACAO"
 )
+DEFAULT_CONFIG = {
+    "result_prefixes": DEFAULT_RESULT_PREFIXES,
+    "ignored_words": DEFAULT_IGNORED_WORDS,
+    "excluded_patterns": DEFAULT_EXCLUDED_PATTERNS,
+}
 
 ALIASES = {
     "date": ["CT2_DATA", "DATA LCTO", "DATA", "DT", "DT_LANC", "DATA_LANCAMENTO"],
@@ -87,6 +92,7 @@ def analyze_file(source, month, db_path, output_path, config=None, recreate=Fals
         create_schema(conn)
         create_import_schema(conn)
         create_supplier_schema(conn)
+        create_settings_schema(conn)
 
         imported_source = get_metadata(conn, "arquivo")
         source_key = str(source.resolve())
@@ -134,13 +140,6 @@ def import_file_into_base(source, db_path, config=None, verbose=False):
     if not source.exists():
         raise FileNotFoundError(f"Arquivo nao encontrado: {source}")
 
-    config = config or {
-        "month": "",
-        "result_prefixes": [clean_account(item) for item in split_list(DEFAULT_RESULT_PREFIXES)],
-        "ignored_words": {normalize_text(item) for item in split_list(DEFAULT_IGNORED_WORDS)},
-        "excluded_patterns": [normalize_text(item) for item in split_list(DEFAULT_EXCLUDED_PATTERNS)],
-    }
-
     with sqlite3.connect(db_path, timeout=60) as conn:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA synchronous = NORMAL")
@@ -148,6 +147,8 @@ def import_file_into_base(source, db_path, config=None, verbose=False):
         create_schema(conn)
         create_import_schema(conn)
         create_supplier_schema(conn)
+        create_settings_schema(conn)
+        config = config or load_config(conn)
 
         if verbose:
             print("Identificando meses e fornecedores do arquivo...", flush=True)
@@ -191,6 +192,7 @@ def export_divergences_from_base(db_path, month, output_path):
     with sqlite3.connect(db_path, timeout=60) as conn:
         create_schema(conn)
         create_supplier_schema(conn)
+        create_settings_schema(conn)
         current_entries = count_month_entries(conn, month)
         total = export_divergences(conn, month, output_path)
 
@@ -210,6 +212,7 @@ def get_base_summary(db_path):
         create_schema(conn)
         create_import_schema(conn)
         create_supplier_schema(conn)
+        create_settings_schema(conn)
         total_entries = conn.execute("SELECT COUNT(*) FROM lancamentos").fetchone()[0]
         supplier_count = conn.execute("SELECT COUNT(*) FROM fornecedores").fetchone()[0]
         rows = conn.execute(
@@ -314,6 +317,59 @@ def create_import_schema(conn):
         );
         """
     )
+
+
+def create_settings_schema(conn):
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS configuracoes (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        );
+        """
+    )
+    for key, value in DEFAULT_CONFIG.items():
+        conn.execute(
+            "INSERT OR IGNORE INTO configuracoes (key, value) VALUES (?, ?)",
+            (key, value),
+        )
+    conn.commit()
+
+
+def load_config(conn, month=""):
+    create_settings_schema(conn)
+    values = dict(conn.execute("SELECT key, value FROM configuracoes").fetchall())
+    return {
+        "month": month,
+        "result_prefixes": [clean_account(item) for item in split_list(values.get("result_prefixes", DEFAULT_RESULT_PREFIXES))],
+        "ignored_words": {normalize_text(item) for item in split_list(values.get("ignored_words", DEFAULT_IGNORED_WORDS))},
+        "excluded_patterns": [normalize_text(item) for item in split_list(values.get("excluded_patterns", DEFAULT_EXCLUDED_PATTERNS))],
+    }
+
+
+def get_settings(db_path):
+    with sqlite3.connect(db_path, timeout=60) as conn:
+        create_settings_schema(conn)
+        values = dict(conn.execute("SELECT key, value FROM configuracoes").fetchall())
+    return {
+        "resultPrefixes": values.get("result_prefixes", DEFAULT_RESULT_PREFIXES),
+        "ignoredWords": values.get("ignored_words", DEFAULT_IGNORED_WORDS),
+        "excludedPatterns": values.get("excluded_patterns", DEFAULT_EXCLUDED_PATTERNS),
+    }
+
+
+def save_settings(db_path, result_prefixes, ignored_words, excluded_patterns):
+    with sqlite3.connect(db_path, timeout=60) as conn:
+        create_settings_schema(conn)
+        conn.executemany(
+            "INSERT OR REPLACE INTO configuracoes (key, value) VALUES (?, ?)",
+            [
+                ("result_prefixes", result_prefixes),
+                ("ignored_words", ignored_words),
+                ("excluded_patterns", excluded_patterns),
+            ],
+        )
+        conn.commit()
 
 
 def create_supplier_schema(conn):
