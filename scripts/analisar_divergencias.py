@@ -689,7 +689,7 @@ def export_divergences(conn, month, output_path):
 
         for row in current_rows:
             supplier_key = row[7]
-            comparison_account = row[17] or comparable_account(row[8], row[14])
+            comparison_account = comparable_account(row[8], row[14])
             previous_comparisons = previous["comparisons"].get(supplier_key, set())
             if comparison_account in previous_comparisons:
                 continue
@@ -714,8 +714,8 @@ def load_previous_accounts(conn, month):
     )
 
     previous = {"comparisons": defaultdict(set), "accounts": defaultdict(dict)}
-    for supplier_key, account, comparison_account, occurrence, last_date in rows:
-        comparison_account = comparison_account or comparable_account(account, occurrence)
+    for supplier_key, account, _comparison_account, occurrence, last_date in rows:
+        comparison_account = comparable_account(account, occurrence)
         previous["comparisons"][supplier_key].add(comparison_account)
         previous["accounts"][supplier_key][account] = last_date
 
