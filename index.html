@@ -16,47 +16,36 @@
             <p class="eyebrow">CT2 Protheus</p>
             <h1>Validador de lancamentos de fornecedores</h1>
           </div>
-          <button id="exportBtn" class="icon-button" type="button" title="Exportar divergencias" disabled>
-            <span aria-hidden="true">CSV</span>
-          </button>
+          <div class="topbar-actions">
+            <button id="settingsBtn" class="secondary-button compact-button" type="button">Configuracoes</button>
+            <button id="exportBtn" class="icon-button" type="button" title="Exportar divergencias" disabled>
+              <span aria-hidden="true">CSV</span>
+            </button>
+          </div>
         </header>
 
-        <section class="control-grid" aria-label="Configuracao da analise">
+        <section id="mainView" class="control-grid" aria-label="Analise de lancamentos">
           <div class="panel upload-panel">
             <div class="upload-actions">
               <label id="supplierDrop" class="file-drop supplier-drop" for="supplierFileInput" hidden>
-                <span class="file-drop__title">MATA020</span>
+                <span class="file-drop__title">Cadastro Fornecedor</span>
                 <span id="supplierFileName" class="file-drop__meta">Selecionar XML</span>
               </label>
               <input id="supplierFileInput" type="file" accept=".xml" />
-              <button id="importSupplierBtn" class="secondary-button" type="button" hidden disabled>Importar MATA020</button>
+              <button id="importSupplierBtn" class="secondary-button" type="button" hidden disabled>Importar</button>
 
               <label class="file-drop" for="fileInput">
-                <span class="file-drop__title">CT2</span>
+                <span class="file-drop__title">Base Contábil</span>
                 <span id="fileName" class="file-drop__meta">Selecionar CSV/XLSX</span>
               </label>
               <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
-              <button id="importBtn" class="secondary-button" type="button" hidden disabled>Importar CT2</button>
-            </div>
-
-            <div class="fields">
-              <label>
+              <button id="importBtn" class="secondary-button" type="button" hidden disabled>Importar</button>
+              <label class="month-field">
                 Mes analisado
                 <input id="monthInput" type="month" />
               </label>
-              <label>
-                Prefixos de contas de resultado
-                <input id="resultPrefixes" type="text" value="32" />
-              </label>
-              <label>
-                Palavras ignoradas no historico
-                <textarea id="ignoredWords" rows="3">NF,NFE,NOTA,FISCAL,DOC,DOCUMENTO,PAGTO,PAGAMENTO,REF,REFERENTE,FORN,FORNECEDOR,FORNEC,HIS,HIST,HISTORICO,ENTR,ENTRADA,IRRF,INSS,ISS,RETIDO,RETENCAO,BOLETO,DUPLICATA,FATURA</textarea>
-              </label>
-              <label>
-                Lotes/historicos ignorados
-                <textarea id="excludedPatterns" rows="3">008860,008890,FUNCIONARIOS,AUTONOMOS,FOLHA,FOL/,FO1/,FO2/,FO3/,FO4/,FO5/,DEPRECIACAO,AMORTIZACAO</textarea>
-              </label>
             </div>
+            <p id="sampleInfo" class="status-line">Base fixa vazia. Importe uma CT2 para comecar.</p>
             <button id="analyzeBtn" class="primary-button" type="button" disabled>Analisar lancamentos</button>
           </div>
 
@@ -68,7 +57,32 @@
               <label>Credito <select id="creditColumn"></select></label>
               <label>Historico <select id="historyColumn"></select></label>
             </div>
-            <p id="sampleInfo" class="muted">Carregue um arquivo para ajustar as colunas.</p>
+          </div>
+        </section>
+
+        <section id="settingsView" class="settings-view" hidden>
+          <div class="panel settings-panel">
+            <div class="section-header">
+              <div>
+                <h2>Configuracoes de importacao</h2>
+                <p class="muted">Estes parametros sao aplicados quando a CT2 e importada para a base fixa.</p>
+              </div>
+              <button id="backBtn" class="secondary-button compact-button" type="button">Voltar</button>
+            </div>
+            <div class="settings-fields">
+              <label>
+                Prefixos de contas de resultado
+                <input id="resultPrefixes" type="text" value="32" />
+              </label>
+              <label>
+                Palavras ignoradas no historico
+                <textarea id="ignoredWords" rows="5">NF,NFE,NOTA,FISCAL,DOC,DOCUMENTO,PAGTO,PAGAMENTO,REF,REFERENTE,FORN,FORNECEDOR,FORNEC,HIS,HIST,HISTORICO,ENTR,ENTRADA,IRRF,INSS,ISS,RETIDO,RETENCAO,BOLETO,DUPLICATA,FATURA</textarea>
+              </label>
+              <label>
+                Lotes/historicos ignorados
+                <textarea id="excludedPatterns" rows="5">008860,008890,FUNCIONARIOS,AUTONOMOS,FOLHA,FOL/,FO1/,FO2/,FO3/,FO4/,FO5/,DEPRECIACAO,AMORTIZACAO</textarea>
+              </label>
+            </div>
           </div>
         </section>
 

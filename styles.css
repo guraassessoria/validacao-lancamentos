@@ -59,6 +59,22 @@ input[type="checkbox"] {
   margin-bottom: 20px;
 }
 
+.topbar-actions,
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-actions {
+  justify-content: flex-end;
+}
+
+.section-header {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--accent);
@@ -174,21 +190,39 @@ small {
 
 .upload-actions {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.4fr) minmax(220px, 1fr) minmax(170px, 0.45fr);
+  grid-template-columns: minmax(210px, 1fr) minmax(130px, 0.35fr) minmax(210px, 1fr) minmax(130px, 0.35fr) minmax(190px, 0.55fr);
   gap: 10px;
   align-items: center;
 }
 
-.fields,
 .mapping-grid {
   display: grid;
   gap: 12px;
   margin-top: 16px;
 }
 
-.fields {
-  grid-template-columns: minmax(170px, 0.65fr) minmax(210px, 0.8fr) minmax(280px, 1.2fr) minmax(280px, 1.2fr);
-  align-items: end;
+.month-field {
+  min-width: 0;
+}
+
+.status-line {
+  min-height: 20px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-view {
+  margin-bottom: 16px;
+}
+
+.settings-panel {
+  max-width: 980px;
+}
+
+.settings-fields {
+  display: grid;
+  gap: 14px;
 }
 
 label {
@@ -234,6 +268,13 @@ textarea {
   background: #fff;
   color: var(--accent-strong);
   font-weight: 800;
+}
+
+.compact-button {
+  width: auto;
+  min-height: 40px;
+  padding: 0 14px;
+  white-space: nowrap;
 }
 
 .secondary-button + .primary-button {
@@ -347,13 +388,15 @@ td {
   }
 
   .control-grid,
-  .fields,
+  .settings-fields,
   .summary-strip,
   .upload-actions {
     grid-template-columns: 1fr;
   }
 
   .topbar,
+  .topbar-actions,
+  .section-header,
   .results-header {
     align-items: stretch;
     flex-direction: column;

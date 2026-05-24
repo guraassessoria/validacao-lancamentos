@@ -17,6 +17,10 @@ const selectors = {
   fileName: document.querySelector("#fileName"),
   analyzeBtn: document.querySelector("#analyzeBtn"),
   exportBtn: document.querySelector("#exportBtn"),
+  settingsBtn: document.querySelector("#settingsBtn"),
+  backBtn: document.querySelector("#backBtn"),
+  mainView: document.querySelector("#mainView"),
+  settingsView: document.querySelector("#settingsView"),
   monthInput: document.querySelector("#monthInput"),
   resultPrefixes: document.querySelector("#resultPrefixes"),
   ignoredWords: document.querySelector("#ignoredWords"),
@@ -48,11 +52,23 @@ selectors.importBtn.addEventListener("click", importSelectedFile);
 selectors.importSupplierBtn.addEventListener("click", importSupplierFile);
 selectors.analyzeBtn.addEventListener("click", runAnalysis);
 selectors.exportBtn.addEventListener("click", exportIssues);
+selectors.settingsBtn.addEventListener("click", showSettings);
+selectors.backBtn.addEventListener("click", showMain);
 selectors.searchInput.addEventListener("input", () => renderIssues(state.issues));
 [selectors.resultPrefixes, selectors.ignoredWords, selectors.excludedPatterns].forEach((control) => {
   control.addEventListener("input", scheduleSettingsSave);
 });
 initServerMode();
+
+function showSettings() {
+  selectors.mainView.hidden = true;
+  selectors.settingsView.hidden = false;
+}
+
+function showMain() {
+  selectors.settingsView.hidden = true;
+  selectors.mainView.hidden = false;
+}
 
 async function handleFile(event) {
   const [file] = event.target.files;
