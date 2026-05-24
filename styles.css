@@ -127,15 +127,17 @@ input:disabled {
 }
 
 .file-drop {
-  display: grid;
-  gap: 6px;
-  min-height: 112px;
-  place-content: center;
-  padding: 20px;
-  border: 1px dashed #8fa199;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface-strong);
-  text-align: center;
+  background: #fff;
+  text-align: left;
   cursor: pointer;
 }
 
@@ -150,6 +152,13 @@ small {
   color: var(--muted);
 }
 
+.file-drop__meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #fileInput,
 #supplierFileInput {
   position: absolute;
@@ -160,7 +169,14 @@ small {
 }
 
 .supplier-drop {
-  margin-bottom: 12px;
+  margin-bottom: 0;
+}
+
+.upload-actions {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.4fr) minmax(220px, 1fr) minmax(170px, 0.45fr);
+  gap: 10px;
+  align-items: center;
 }
 
 .fields,
@@ -202,7 +218,7 @@ textarea {
 .primary-button {
   width: 100%;
   min-height: 46px;
-  margin-top: 16px;
+  margin-top: 14px;
   border-radius: 8px;
   background: var(--accent);
   color: #fff;
@@ -211,8 +227,8 @@ textarea {
 
 .secondary-button {
   width: 100%;
-  min-height: 44px;
-  margin-top: 16px;
+  min-height: 42px;
+  margin-top: 0;
   border: 1px solid var(--accent);
   border-radius: 8px;
   background: #fff;
@@ -332,7 +348,8 @@ td {
 
   .control-grid,
   .fields,
-  .summary-strip {
+  .summary-strip,
+  .upload-actions {
     grid-template-columns: 1fr;
   }
 

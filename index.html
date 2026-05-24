@@ -23,18 +23,21 @@
 
         <section class="control-grid" aria-label="Configuracao da analise">
           <div class="panel upload-panel">
-            <label id="supplierDrop" class="file-drop supplier-drop" for="supplierFileInput" hidden>
-              <span class="file-drop__title">Importar cadastro MATA020</span>
-              <span id="supplierFileName" class="file-drop__meta">XML com razao social e nome fantasia dos fornecedores</span>
-            </label>
-            <input id="supplierFileInput" type="file" accept=".xml" />
-            <button id="importSupplierBtn" class="secondary-button" type="button" hidden disabled>Importar MATA020</button>
+            <div class="upload-actions">
+              <label id="supplierDrop" class="file-drop supplier-drop" for="supplierFileInput" hidden>
+                <span class="file-drop__title">MATA020</span>
+                <span id="supplierFileName" class="file-drop__meta">Selecionar XML</span>
+              </label>
+              <input id="supplierFileInput" type="file" accept=".xml" />
+              <button id="importSupplierBtn" class="secondary-button" type="button" hidden disabled>Importar MATA020</button>
 
-            <label class="file-drop" for="fileInput">
-              <span class="file-drop__title">Selecionar CT2</span>
-              <span id="fileName" class="file-drop__meta">CSV ou XLSX com meses anteriores e mes analisado</span>
-            </label>
-            <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
+              <label class="file-drop" for="fileInput">
+                <span class="file-drop__title">CT2</span>
+                <span id="fileName" class="file-drop__meta">Selecionar CSV/XLSX</span>
+              </label>
+              <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
+              <button id="importBtn" class="secondary-button" type="button" hidden disabled>Importar CT2</button>
+            </div>
 
             <div class="fields">
               <label>
@@ -54,8 +57,6 @@
                 <textarea id="excludedPatterns" rows="3">008860,008890,FUNCIONARIOS,AUTONOMOS,FOLHA,FOL/,FO1/,FO2/,FO3/,FO4/,FO5/,DEPRECIACAO,AMORTIZACAO</textarea>
               </label>
             </div>
-
-            <button id="importBtn" class="secondary-button" type="button" hidden disabled>Importar CT2 para base fixa</button>
             <button id="analyzeBtn" class="primary-button" type="button" disabled>Analisar lancamentos</button>
           </div>
 
