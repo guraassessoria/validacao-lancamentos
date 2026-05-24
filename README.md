@@ -9,6 +9,9 @@ Aplicacao web estatica para validar lancamentos da tabela CT2 do Protheus.
 - `samples/`: bases e relatorios de exemplo usados em testes locais.
 - `data/`, `uploads/`, `saida/`, `bancos/`: arquivos gerados em execucao, fora do Git.
 
+Os CSVs grandes em `samples/` ficam apenas no ambiente local. Eles nao sao
+versionados para evitar falhas de deploy e consumo de cota do Git LFS.
+
 ## Como usar
 
 ### Backend web

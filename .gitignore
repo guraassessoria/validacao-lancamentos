@@ -8,4 +8,5 @@ uploads/
 data/
 mata020.xml
 samples/mata020.xml
+samples/*.csv
 __pycache__/
