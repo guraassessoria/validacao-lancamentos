@@ -311,12 +311,7 @@ async function importFile(file, messages) {
   renderEmpty(messages.waiting);
 
   try {
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: buildUploadPayload(file),
-    });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || payload.detail || "Falha ao importar o arquivo.");
+    const payload = await uploadFileWithProgress(file, messages.progress);
 
     updateBaseSummary(payload.base);
     if (payload.supplierCount) {
@@ -343,6 +338,46 @@ function buildUploadPayload(file) {
   const form = new FormData();
   form.append("file", file, file.name);
   return form;
+}
+
+function uploadFileWithProgress(file, label) {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", "/api/upload");
+
+    request.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable) {
+        selectors.sampleInfo.textContent = label;
+        return;
+      }
+
+      const percent = Math.round((event.loaded / event.total) * 100);
+      selectors.sampleInfo.textContent = `${label} Enviando arquivo: ${percent}%.`;
+      if (percent === 100) {
+        renderEmpty("Arquivo enviado. Processando e atualizando a base fixa...");
+      }
+    });
+
+    request.addEventListener("load", () => {
+      let payload = {};
+      try {
+        payload = JSON.parse(request.responseText || "{}");
+      } catch {
+        reject(new Error("Resposta invalida do servidor."));
+        return;
+      }
+
+      if (request.status >= 200 && request.status < 300) {
+        resolve(payload);
+      } else {
+        reject(new Error(payload.error || payload.detail || "Falha ao importar o arquivo."));
+      }
+    });
+
+    request.addEventListener("error", () => reject(new Error("Falha de rede durante o upload.")));
+    request.addEventListener("abort", () => reject(new Error("Upload cancelado.")));
+    request.send(buildUploadPayload(file));
+  });
 }
 
 function updateBaseSummary(base) {
