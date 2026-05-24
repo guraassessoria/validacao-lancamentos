@@ -273,7 +273,7 @@ async function initServerMode() {
     selectors.importSupplierBtn.hidden = false;
     selectors.importBtn.hidden = false;
     selectors.analyzeBtn.disabled = false;
-    selectors.fileName.textContent = "Selecione uma CT2 para importar ou analise a base ja carregada";
+    selectors.fileName.textContent = "Selecionar XLSX ou CSV";
     await loadSettings();
     updateBaseSummary(await response.json());
   } catch {
