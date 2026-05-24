@@ -19,7 +19,7 @@
           <div class="topbar-actions">
             <button id="settingsBtn" class="secondary-button compact-button" type="button">Configuracoes</button>
             <button id="exportBtn" class="icon-button" type="button" title="Exportar divergencias" disabled>
-              <span aria-hidden="true">CSV</span>
+              <span aria-hidden="true">Exportar CSV</span>
             </button>
           </div>
         </header>
@@ -114,11 +114,26 @@
             <table>
               <thead>
                 <tr>
-                  <th>Fornecedor extraido</th>
-                  <th>Data</th>
-                  <th>Conta atual</th>
-                  <th>Ultimas contas anteriores</th>
-                  <th>Historico</th>
+                  <th>
+                    <button class="sort-button" type="button" data-sort="supplier" disabled>Fornecedor</button>
+                    <input class="column-filter" type="search" data-filter="supplier" placeholder="Filtrar" disabled />
+                  </th>
+                  <th>
+                    <button class="sort-button" type="button" data-sort="date" disabled>Data</button>
+                    <input class="column-filter" type="search" data-filter="date" placeholder="Filtrar" disabled />
+                  </th>
+                  <th>
+                    <button class="sort-button" type="button" data-sort="account" disabled>Conta atual</button>
+                    <input class="column-filter" type="search" data-filter="account" placeholder="Filtrar" disabled />
+                  </th>
+                  <th>
+                    <button class="sort-button" type="button" data-sort="previousAccountsText" disabled>Ultimas contas anteriores</button>
+                    <input class="column-filter" type="search" data-filter="previousAccountsText" placeholder="Filtrar" disabled />
+                  </th>
+                  <th>
+                    <button class="sort-button" type="button" data-sort="history" disabled>Historico</button>
+                    <input class="column-filter" type="search" data-filter="history" placeholder="Filtrar" disabled />
+                  </th>
                 </tr>
               </thead>
               <tbody id="resultsBody">

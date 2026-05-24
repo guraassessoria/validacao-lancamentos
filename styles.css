@@ -357,6 +357,55 @@ th {
   text-transform: uppercase;
 }
 
+th {
+  z-index: 1;
+}
+
+.sort-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.sort-button:disabled {
+  cursor: not-allowed;
+}
+
+.sort-button::after {
+  content: "";
+  color: var(--accent-strong);
+  font-size: 11px;
+}
+
+.sort-button[data-direction="asc"]::after {
+  content: "▲";
+}
+
+.sort-button[data-direction="desc"]::after {
+  content: "▼";
+}
+
+.column-filter {
+  min-height: 32px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  text-transform: none;
+}
+
 td {
   font-size: 14px;
 }

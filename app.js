@@ -5,6 +5,8 @@ const state = {
   serverMode: false,
   serverOutputUrl: "",
   settingsTimer: null,
+  sortColumn: "date",
+  sortDirection: "asc",
 };
 
 const selectors = {
@@ -33,6 +35,8 @@ const selectors = {
   sampleInfo: document.querySelector("#sampleInfo"),
   resultsBody: document.querySelector("#resultsBody"),
   searchInput: document.querySelector("#searchInput"),
+  columnFilters: document.querySelectorAll(".column-filter"),
+  sortButtons: document.querySelectorAll(".sort-button"),
   totalRows: document.querySelector("#totalRows"),
   resultRows: document.querySelector("#resultRows"),
   currentRows: document.querySelector("#currentRows"),
@@ -55,6 +59,12 @@ selectors.exportBtn.addEventListener("click", exportIssues);
 selectors.settingsBtn.addEventListener("click", showSettings);
 selectors.backBtn.addEventListener("click", showMain);
 selectors.searchInput.addEventListener("input", () => renderIssues(state.issues));
+selectors.columnFilters.forEach((control) => {
+  control.addEventListener("input", () => renderIssues(state.issues));
+});
+selectors.sortButtons.forEach((button) => {
+  button.addEventListener("click", () => sortIssues(button.dataset.sort));
+});
 [selectors.resultPrefixes, selectors.ignoredWords, selectors.excludedPatterns].forEach((control) => {
   control.addEventListener("input", scheduleSettingsSave);
 });
@@ -68,6 +78,17 @@ function showSettings() {
 function showMain() {
   selectors.settingsView.hidden = true;
   selectors.mainView.hidden = false;
+}
+
+function sortIssues(column) {
+  if (state.sortColumn === column) {
+    state.sortDirection = state.sortDirection === "asc" ? "desc" : "asc";
+  } else {
+    state.sortColumn = column;
+    state.sortDirection = "asc";
+  }
+
+  renderIssues(state.issues);
 }
 
 async function handleFile(event) {
@@ -229,6 +250,7 @@ function runAnalysis() {
   setMetric("issueRows", state.issues.length);
   selectors.exportBtn.disabled = state.issues.length === 0;
   selectors.searchInput.disabled = state.issues.length === 0;
+  setTableControlsEnabled(state.issues.length > 0);
   renderIssues(state.issues);
 }
 
@@ -289,6 +311,7 @@ async function runServerAnalysis() {
     selectors.sampleInfo.textContent = `${Number(payload.total).toLocaleString("pt-BR")} divergencias geradas. A tabela mostra todos os lancamentos do mes analisado.`;
     selectors.exportBtn.disabled = payload.total === 0;
     selectors.searchInput.disabled = state.issues.length === 0;
+    setTableControlsEnabled(state.issues.length > 0);
     renderIssues(state.issues);
   } catch (error) {
     renderEmpty(error.message);
@@ -748,9 +771,17 @@ function buildSupplierHistory(entries) {
 
 function renderIssues(issues) {
   const query = normalizeText(selectors.searchInput.value);
-  const filtered = query
-    ? issues.filter((issue) => normalizeText(`${issue.supplier} ${issue.account} ${issue.history}`).includes(query))
-    : issues;
+  const columnFilters = getColumnFilters();
+  const filtered = sortFilteredIssues(issues.filter((issue) => {
+    if (query && !normalizeText(`${issue.supplier} ${issue.date} ${issue.account} ${formatPreviousAccountsText(issue.previousAccounts)} ${issue.history}`).includes(query)) {
+      return false;
+    }
+
+    return Object.entries(columnFilters).every(([column, value]) => {
+      if (!value) return true;
+      return normalizeText(getIssueColumnValue(issue, column)).includes(value);
+    });
+  }));
 
   if (filtered.length === 0) {
     renderEmpty(issues.length === 0 ? "Nenhuma divergencia encontrada." : "Nenhuma divergencia corresponde ao filtro.");
@@ -771,6 +802,60 @@ function renderIssues(issues) {
     fragment.append(row);
   });
   selectors.resultsBody.append(fragment);
+  updateSortIndicators();
+}
+
+function getColumnFilters() {
+  const filters = {};
+  selectors.columnFilters.forEach((control) => {
+    filters[control.dataset.filter] = normalizeText(control.value);
+  });
+  return filters;
+}
+
+function sortFilteredIssues(issues) {
+  const direction = state.sortDirection === "desc" ? -1 : 1;
+  const column = state.sortColumn;
+
+  return issues.slice().sort((a, b) => compareIssueValues(a, b, column) * direction);
+}
+
+function compareIssueValues(a, b, column) {
+  if (column === "date") return String(a.date || "").localeCompare(String(b.date || ""));
+  if (column === "account") return String(a.account || "").localeCompare(String(b.account || ""), "pt-BR", { numeric: true });
+
+  return normalizeText(getIssueColumnValue(a, column)).localeCompare(
+    normalizeText(getIssueColumnValue(b, column)),
+    "pt-BR",
+    { numeric: true }
+  );
+}
+
+function getIssueColumnValue(issue, column) {
+  if (column === "previousAccountsText") return formatPreviousAccountsText(issue.previousAccounts);
+  return issue[column] || "";
+}
+
+function formatPreviousAccountsText(accounts) {
+  if (!accounts.length) return "Sem historico anterior";
+  return accounts.map((item) => `${item.account} ${formatDate(item.date)}`).join(" | ");
+}
+
+function updateSortIndicators() {
+  selectors.sortButtons.forEach((button) => {
+    const active = button.dataset.sort === state.sortColumn;
+    button.dataset.direction = active ? state.sortDirection : "";
+    button.setAttribute("aria-sort", active ? (state.sortDirection === "asc" ? "ascending" : "descending") : "none");
+  });
+}
+
+function setTableControlsEnabled(enabled) {
+  selectors.columnFilters.forEach((control) => {
+    control.disabled = !enabled;
+  });
+  selectors.sortButtons.forEach((button) => {
+    button.disabled = !enabled;
+  });
 }
 
 function renderPreviousAccounts(accounts) {
