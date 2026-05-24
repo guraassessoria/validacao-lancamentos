@@ -2,6 +2,13 @@
 
 Aplicacao web estatica para validar lancamentos da tabela CT2 do Protheus.
 
+## Estrutura
+
+- `web/`: interface estatica publicada no GitHub Pages e servida pelo backend.
+- `scripts/`: backend, servidor local e motor de analise/importacao.
+- `samples/`: bases e relatorios de exemplo usados em testes locais.
+- `data/`, `uploads/`, `saida/`, `bancos/`: arquivos gerados em execucao, fora do Git.
+
 ## Como usar
 
 ### Backend web
@@ -74,13 +81,13 @@ Depois disso, informe o mes analisado e gere somente o CSV de divergencias.
 Tambem e possivel rodar direto pelo terminal:
 
 ```powershell
-python scripts\analisar_divergencias.py --arquivo ct2_dados_2025-01-01_2026-04-30.csv --mes 2026-04 --db ct2.db --saida divergencias_2026-04.csv --recriar
+python scripts\analisar_divergencias.py --arquivo samples\ct2_dados_2025-01-01_2026-04-30.csv --mes 2026-04 --db ct2.db --saida divergencias_2026-04.csv --recriar
 ```
 
 Para rodar novamente no mesmo arquivo e banco, o `--recriar` pode ser omitido:
 
 ```powershell
-python scripts\analisar_divergencias.py --arquivo ct2_dados_2025-01-01_2026-04-30.csv --mes 2026-04 --db ct2.db --saida divergencias_2026-04.csv
+python scripts\analisar_divergencias.py --arquivo samples\ct2_dados_2025-01-01_2026-04-30.csv --mes 2026-04 --db ct2.db --saida divergencias_2026-04.csv
 ```
 
 O CSV gerado contem apenas divergencias: lancamentos do mes analisado em que o
@@ -95,7 +102,7 @@ nao e tratada como divergencia.
 
 ### Tela estatica
 
-1. Abra `index.html` no navegador.
+1. Abra `web\index.html` no navegador.
 2. Selecione um arquivo CSV, XLSX ou XLS da CT2.
 3. Informe o mes analisado.
 4. Confira as colunas detectadas: data, debito, credito e historico.

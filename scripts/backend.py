@@ -21,6 +21,7 @@ from .neon_state import hydrate_sqlite, persist_sqlite
 
 
 ROOT = Path(__file__).resolve().parents[1]
+WEB_DIR = ROOT / "web"
 DATA_DIR = Path(os.getenv("DATA_DIR", ROOT / "data")).resolve()
 UPLOAD_DIR = DATA_DIR / "uploads"
 OUTPUT_DIR = DATA_DIR / "saida"
@@ -72,7 +73,7 @@ def startup():
 
 @app.get("/")
 def index():
-    return FileResponse(ROOT / "index.html", media_type="text/html; charset=utf-8")
+    return FileResponse(WEB_DIR / "index.html", media_type="text/html; charset=utf-8")
 
 
 @app.get("/favicon.ico")
@@ -82,12 +83,12 @@ def favicon():
 
 @app.get("/app.js")
 def app_js():
-    return FileResponse(ROOT / "app.js", media_type="application/javascript; charset=utf-8")
+    return FileResponse(WEB_DIR / "app.js", media_type="application/javascript; charset=utf-8")
 
 
 @app.get("/styles.css")
 def styles_css():
-    return FileResponse(ROOT / "styles.css", media_type="text/css; charset=utf-8")
+    return FileResponse(WEB_DIR / "styles.css", media_type="text/css; charset=utf-8")
 
 
 @app.get("/api/health")

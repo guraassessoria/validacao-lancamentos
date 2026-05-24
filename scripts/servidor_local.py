@@ -17,6 +17,8 @@ from analisar_divergencias import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+WEB_DIR = ROOT / "web"
+SAMPLES_DIR = ROOT / "samples"
 OUTPUT_DIR = ROOT / "saida"
 DB_DIR = ROOT / "bancos"
 UPLOAD_DIR = ROOT / "uploads"
@@ -58,10 +60,10 @@ class LocalHandler(BaseHTTPRequestHandler):
             return self.send_static(OUTPUT_DIR / unquote(path.removeprefix("/saida/")), allow_root=OUTPUT_DIR)
 
         if path == "/":
-            return self.send_static(ROOT / "index.html", allow_root=ROOT)
+            return self.send_static(WEB_DIR / "index.html", allow_root=WEB_DIR)
 
-        requested = ROOT / unquote(path.lstrip("/"))
-        return self.send_static(requested, allow_root=ROOT)
+        requested = WEB_DIR / unquote(path.lstrip("/"))
+        return self.send_static(requested, allow_root=WEB_DIR)
 
     def do_POST(self):
         if urlparse(self.path).path != "/api/analyze":
@@ -163,17 +165,20 @@ class LocalHandler(BaseHTTPRequestHandler):
 
 def list_csv_files():
     files = []
-    for path in ROOT.glob("*.csv"):
-        if path.name.startswith("divergencias_"):
+    for folder in (ROOT, SAMPLES_DIR):
+        if not folder.exists():
             continue
-        if not is_ct2_csv(path):
-            continue
-        files.append(
-            {
-                "name": path.name,
-                "size": path.stat().st_size,
-            }
-        )
+        for path in folder.glob("*.csv"):
+            if path.name.startswith("divergencias_"):
+                continue
+            if not is_ct2_csv(path):
+                continue
+            files.append(
+                {
+                    "name": path.name,
+                    "size": path.stat().st_size,
+                }
+            )
     return sorted(files, key=lambda item: item["name"].lower())
 
 
