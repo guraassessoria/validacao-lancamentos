@@ -52,12 +52,16 @@ Depois abra:
 http://127.0.0.1:8000
 ```
 
-A tela permite importar o XML do MATA020 e arquivos CSV da CT2 para uma base
-SQLite fixa. Importe o `mata020.xml` para carregar razao social e nome fantasia
-dos fornecedores; depois importe a CT2. Durante a importacao da CT2, todos os
-meses presentes no arquivo sao substituidos na base; meses novos sao integrados
-aos dados ja existentes. Depois disso, informe o mes analisado e gere somente o
-CSV de divergencias.
+A tela possui dois pontos de importacao:
+
+1. `Importar cadastro MATA020`: recebe o `mata020.xml` e carrega razao social e
+   nome fantasia dos fornecedores.
+2. `Importar CT2 para base fixa`: recebe o CSV da CT2 e atualiza os lancamentos.
+
+Importe o `mata020.xml` antes da CT2 para melhorar a identificacao dos
+fornecedores. Durante a importacao da CT2, todos os meses presentes no arquivo
+sao substituidos na base; meses novos sao integrados aos dados ja existentes.
+Depois disso, informe o mes analisado e gere somente o CSV de divergencias.
 
 > No GitHub Pages, a aplicacao roda apenas como pagina estatica. O modo com
 > base fixa SQLite, importacao do MATA020 e processamento de arquivos grandes

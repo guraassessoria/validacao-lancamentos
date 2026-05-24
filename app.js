@@ -8,7 +8,11 @@ const state = {
 
 const selectors = {
   fileInput: document.querySelector("#fileInput"),
+  supplierFileInput: document.querySelector("#supplierFileInput"),
   importBtn: document.querySelector("#importBtn"),
+  importSupplierBtn: document.querySelector("#importSupplierBtn"),
+  supplierDrop: document.querySelector("#supplierDrop"),
+  supplierFileName: document.querySelector("#supplierFileName"),
   fileName: document.querySelector("#fileName"),
   analyzeBtn: document.querySelector("#analyzeBtn"),
   exportBtn: document.querySelector("#exportBtn"),
@@ -38,7 +42,9 @@ const aliases = {
 };
 
 selectors.fileInput.addEventListener("change", handleFile);
+selectors.supplierFileInput.addEventListener("change", handleSupplierFile);
 selectors.importBtn.addEventListener("click", importSelectedFile);
+selectors.importSupplierBtn.addEventListener("click", importSupplierFile);
 selectors.analyzeBtn.addEventListener("click", runAnalysis);
 selectors.exportBtn.addEventListener("click", exportIssues);
 selectors.searchInput.addEventListener("input", () => renderIssues(state.issues));
@@ -206,12 +212,23 @@ function runAnalysis() {
   renderIssues(state.issues);
 }
 
+function handleSupplierFile(event) {
+  const [file] = event.target.files;
+  if (!file) return;
+
+  selectors.supplierFileName.textContent = file.name;
+  selectors.importSupplierBtn.disabled = false;
+  renderEmpty("Cadastro selecionado. Importe o MATA020 antes da CT2 para melhorar a identificacao dos fornecedores.");
+}
+
 async function initServerMode() {
   try {
     const response = await fetch("/api/base");
     if (!response.ok) return;
 
     state.serverMode = true;
+    selectors.supplierDrop.hidden = false;
+    selectors.importSupplierBtn.hidden = false;
     selectors.importBtn.hidden = false;
     selectors.analyzeBtn.disabled = false;
     selectors.fileName.textContent = "Selecione uma CT2 para importar ou analise a base ja carregada";
@@ -266,10 +283,32 @@ async function importSelectedFile() {
     return;
   }
 
-  selectors.importBtn.disabled = true;
+  await importFile(file, {
+    button: selectors.importBtn,
+    progress: "Importando CT2 para a base fixa...",
+    waiting: "Importacao em andamento. Meses ja existentes serao substituidos.",
+  });
+}
+
+async function importSupplierFile() {
+  const [file] = selectors.supplierFileInput.files;
+  if (!file) {
+    renderEmpty("Selecione o XML do MATA020 para importar.");
+    return;
+  }
+
+  await importFile(file, {
+    button: selectors.importSupplierBtn,
+    progress: "Importando cadastro MATA020...",
+    waiting: "Importacao do cadastro em andamento.",
+  });
+}
+
+async function importFile(file, messages) {
+  messages.button.disabled = true;
   selectors.analyzeBtn.disabled = true;
-  selectors.sampleInfo.textContent = "Importando arquivo para a base fixa...";
-  renderEmpty("Importacao em andamento. Meses ja existentes serao substituidos.");
+  selectors.sampleInfo.textContent = messages.progress;
+  renderEmpty(messages.waiting);
 
   try {
     const response = await fetch("/api/upload", {
@@ -289,7 +328,7 @@ async function importSelectedFile() {
     selectors.sampleInfo.textContent = "Nao foi possivel importar o arquivo.";
     renderEmpty(error.message);
   } finally {
-    selectors.importBtn.disabled = false;
+    messages.button.disabled = false;
     selectors.analyzeBtn.disabled = false;
   }
 }

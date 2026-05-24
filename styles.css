@@ -150,12 +150,17 @@ small {
   color: var(--muted);
 }
 
-#fileInput {
+#fileInput,
+#supplierFileInput {
   position: absolute;
   inline-size: 1px;
   block-size: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+}
+
+.supplier-drop {
+  margin-bottom: 12px;
 }
 
 .fields,

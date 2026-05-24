@@ -23,11 +23,18 @@
 
         <section class="control-grid" aria-label="Configuracao da analise">
           <div class="panel upload-panel">
+            <label id="supplierDrop" class="file-drop supplier-drop" for="supplierFileInput" hidden>
+              <span class="file-drop__title">Importar cadastro MATA020</span>
+              <span id="supplierFileName" class="file-drop__meta">XML com razao social e nome fantasia dos fornecedores</span>
+            </label>
+            <input id="supplierFileInput" type="file" accept=".xml" />
+            <button id="importSupplierBtn" class="secondary-button" type="button" hidden disabled>Importar MATA020</button>
+
             <label class="file-drop" for="fileInput">
-              <span class="file-drop__title">Selecionar CT2 mensal</span>
+              <span class="file-drop__title">Selecionar CT2</span>
               <span id="fileName" class="file-drop__meta">CSV ou XLSX com meses anteriores e mes analisado</span>
             </label>
-            <input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.xml" />
+            <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
 
             <div class="fields">
               <label>
@@ -48,7 +55,7 @@
               </label>
             </div>
 
-            <button id="importBtn" class="secondary-button" type="button" hidden disabled>Importar para base fixa</button>
+            <button id="importBtn" class="secondary-button" type="button" hidden disabled>Importar CT2 para base fixa</button>
             <button id="analyzeBtn" class="primary-button" type="button" disabled>Analisar lancamentos</button>
           </div>
 
