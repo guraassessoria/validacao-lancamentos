@@ -2,12 +2,11 @@
 import os
 import base64
 import secrets
-import shutil
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
-from fastapi.staticfiles import StaticFiles
 
 from .analisar_divergencias import (
     export_divergences_from_base,
@@ -26,15 +25,18 @@ DATA_DIR = Path(os.getenv("DATA_DIR", ROOT / "data")).resolve()
 UPLOAD_DIR = DATA_DIR / "uploads"
 OUTPUT_DIR = DATA_DIR / "saida"
 DB_PATH = DATA_DIR / "ct2_base.db"
-
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "100")) * 1024 * 1024
 app = FastAPI(title="Validador CT2", version="1.0.0")
 
 
 @app.middleware("http")
 async def basic_auth(request: Request, call_next):
     password = os.getenv("APP_PASSWORD", "")
+    if running_online() and not password:
+        return Response("APP_PASSWORD nao configurado.", status_code=503)
+
     if not password:
-        return await call_next(request)
+        return add_security_headers(await call_next(request))
 
     authorization = request.headers.get("Authorization", "")
     if authorization.startswith("Basic "):
@@ -42,23 +44,46 @@ async def basic_auth(request: Request, call_next):
             decoded = base64.b64decode(authorization.removeprefix("Basic ")).decode("utf-8")
             _user, supplied_password = decoded.split(":", 1)
             if secrets.compare_digest(supplied_password, password):
-                return await call_next(request)
+                return add_security_headers(await call_next(request))
         except Exception:
             pass
 
-    return Response(
+    return add_security_headers(Response(
         "Autenticacao requerida.",
         status_code=401,
         headers={"WWW-Authenticate": 'Basic realm="Validador CT2"'},
-    )
+    ))
 
 
 @app.on_event("startup")
 def startup():
+    if running_online() and not os.getenv("APP_PASSWORD"):
+        raise RuntimeError("APP_PASSWORD precisa estar configurado no ambiente online.")
+
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     hydrate_sqlite(DB_PATH)
+
+
+@app.get("/")
+def index():
+    return FileResponse(ROOT / "index.html", media_type="text/html; charset=utf-8")
+
+
+@app.get("/favicon.ico")
+def favicon():
+    raise HTTPException(status_code=404, detail="Arquivo nao encontrado.")
+
+
+@app.get("/app.js")
+def app_js():
+    return FileResponse(ROOT / "app.js", media_type="application/javascript; charset=utf-8")
+
+
+@app.get("/styles.css")
+def styles_css():
+    return FileResponse(ROOT / "styles.css", media_type="text/css; charset=utf-8")
 
 
 @app.get("/api/health")
@@ -158,13 +183,28 @@ def save_upload(file: UploadFile):
     if suffix not in {".csv", ".xml"}:
         raise HTTPException(status_code=400, detail="Envie um CSV da CT2 ou XML do MATA020.")
 
-    name = safe_slug(Path(file.filename or "upload").stem) + suffix
+    name = f"{safe_slug(Path(file.filename or 'upload').stem)}_{uuid.uuid4().hex}{suffix}"
     target = UPLOAD_DIR / name
 
     with target.open("wb") as handle:
-        shutil.copyfileobj(file.file, handle)
+        copy_upload_with_limit(file.file, handle, MAX_UPLOAD_BYTES)
 
     return target
+
+
+def copy_upload_with_limit(source, target, max_bytes):
+    copied = 0
+    while True:
+        chunk = source.read(1024 * 1024)
+        if not chunk:
+            break
+        copied += len(chunk)
+        if copied > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Arquivo excede o limite de {MAX_UPLOAD_BYTES // 1024 // 1024} MB.",
+            )
+        target.write(chunk)
 
 
 def load_divergences(output):
@@ -189,4 +229,20 @@ def safe_slug(value):
     return slug or "upload"
 
 
-app.mount("/", StaticFiles(directory=ROOT, html=True), name="static")
+def add_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; "
+        "img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    )
+    if running_online():
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
+
+def running_online():
+    return bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID") or os.getenv("RENDER_EXTERNAL_URL"))

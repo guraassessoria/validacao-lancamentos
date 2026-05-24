@@ -4,11 +4,12 @@ import csv
 import re
 import sqlite3
 import unicodedata
-import xml.etree.ElementTree as ET
 from collections import defaultdict
 from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
+
+from defusedxml import ElementTree as ET
 
 
 DEFAULT_RESULT_PREFIXES = "32"
@@ -751,10 +752,15 @@ def export_divergences(conn, month, output_path):
                 continue
 
             previous_accounts = format_previous_accounts(previous["accounts"].get(supplier_key, {}))
-            writer.writerow([*row[:15], previous_accounts, row[15], row[16]])
+            writer.writerow([safe_csv_cell(value) for value in [*row[:15], previous_accounts, row[15], row[16]]])
             total += 1
 
     return total
+
+
+def safe_csv_cell(value):
+    text = "" if value is None else str(value)
+    return f"'{text}" if text.startswith(("=", "+", "-", "@", "\t", "\r", "\n")) else text
 
 
 def load_previous_accounts(conn, month):
