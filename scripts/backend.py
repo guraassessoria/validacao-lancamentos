@@ -125,6 +125,7 @@ def upload_base(file: UploadFile = File(...), kind: str = Form("ct2")):
             if target.suffix.lower() != ".xml":
                 raise HTTPException(status_code=400, detail="Envie o cadastro de fornecedores em XML.")
             result = import_supplier_registry(target, DB_PATH)
+            clear_output_files()
             persist_sqlite(DB_PATH)
             return {
                 "file": target.name,
@@ -138,6 +139,7 @@ def upload_base(file: UploadFile = File(...), kind: str = Form("ct2")):
             if target.suffix.lower() not in {".csv", ".xml"}:
                 raise HTTPException(status_code=400, detail="Envie o plano de contas em CSV ou XML.")
             result = import_account_plan(target, DB_PATH)
+            clear_output_files()
             persist_sqlite(DB_PATH)
             return {
                 "file": target.name,
@@ -154,6 +156,7 @@ def upload_base(file: UploadFile = File(...), kind: str = Form("ct2")):
             raise HTTPException(status_code=400, detail="Envie um CSV da CT2.")
 
         result = import_file_into_base(target, DB_PATH, verbose=True)
+        clear_output_files()
         persist_sqlite(DB_PATH)
         return {
             "file": target.name,
@@ -235,6 +238,11 @@ def load_divergences(output):
     with output.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle, delimiter=";")
         return list(reader)
+
+
+def clear_output_files():
+    for path in OUTPUT_DIR.glob("divergencias_base_*.csv"):
+        path.unlink(missing_ok=True)
 
 
 def safe_output_path(file_name):

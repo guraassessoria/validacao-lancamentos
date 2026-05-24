@@ -397,12 +397,13 @@ async function importFile(file, messages) {
     const payload = await uploadFileWithProgress(file, messages.progress, messages.kind);
 
     updateBaseSummary(payload.base);
+    clearAnalysisResult();
     if (payload.supplierCount) {
-      renderEmpty(`${Number(payload.supplierCount).toLocaleString("pt-BR")} fornecedores importados do cadastro.`);
+      renderEmpty(`${Number(payload.supplierCount).toLocaleString("pt-BR")} fornecedores importados do cadastro. Execute a analise novamente para atualizar a exportacao.`);
     } else if (payload.accountCount) {
-      renderEmpty(`${Number(payload.accountCount).toLocaleString("pt-BR")} contas importadas do plano de contas.`);
+      renderEmpty(`${Number(payload.accountCount).toLocaleString("pt-BR")} contas importadas do plano de contas. Execute a analise novamente para atualizar a exportacao.`);
     } else {
-      renderEmpty(`Base atualizada: ${payload.months.join(", ")}.`);
+      renderEmpty(`Base atualizada: ${payload.months.join(", ")}. Execute a analise novamente para gerar a exportacao.`);
     }
   } catch (error) {
     selectors.sampleInfo.textContent = "Nao foi possivel importar o arquivo.";
@@ -411,6 +412,18 @@ async function importFile(file, messages) {
     messages.button.disabled = false;
     selectors.analyzeBtn.disabled = false;
   }
+}
+
+function clearAnalysisResult() {
+  state.issues = [];
+  state.serverOutputUrl = "";
+  selectors.exportBtn.disabled = true;
+  selectors.searchInput.value = "";
+  selectors.searchInput.disabled = true;
+  selectors.columnFilters.forEach((control) => {
+    control.value = "";
+  });
+  setTableControlsEnabled(false);
 }
 
 function scheduleSettingsSave() {
