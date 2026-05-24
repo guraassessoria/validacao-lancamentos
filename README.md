@@ -20,12 +20,19 @@ Depois abra:
 http://127.0.0.1:8000
 ```
 
-O backend usa a pasta `data/` por padrao. Em hospedagem, configure a variavel
-`DATA_DIR` para apontar para um disco persistente. No Render, o `render.yaml`
-ja monta `/var/data` e define `DATA_DIR=/var/data`.
+O backend usa a pasta `data/` por padrao em ambiente local. Em hospedagem sem
+disco persistente, configure `DATABASE_URL` com uma conexao Postgres da Neon. A
+aplicacao usa o Postgres para guardar a base SQLite de trabalho de forma
+persistente, e recria o arquivo local quando o servidor inicia.
 
 Defina tambem `APP_PASSWORD` no ambiente online. Quando essa variavel existe,
 a aplicacao exige senha via autenticacao basica do navegador.
+
+Variaveis para Render + Neon:
+
+- `DATABASE_URL`: connection string da Neon.
+- `APP_PASSWORD`: senha de acesso ao sistema.
+- `DATA_DIR`: pode ficar como `/tmp/validador-ct2`.
 
 ### Analise local com SQLite
 

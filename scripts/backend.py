@@ -15,6 +15,8 @@ from .analisar_divergencias import (
     import_file_into_base,
     import_supplier_registry,
 )
+from .neon_state import enabled as neon_enabled
+from .neon_state import hydrate_sqlite, persist_sqlite
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -54,11 +56,12 @@ def startup():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    hydrate_sqlite(DB_PATH)
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "neon": neon_enabled()}
 
 
 @app.get("/api/base")
@@ -73,6 +76,7 @@ def upload_base(file: UploadFile = File(...)):
     try:
         if target.suffix.lower() == ".xml":
             result = import_supplier_registry(target, DB_PATH)
+            persist_sqlite(DB_PATH)
             return {
                 "file": target.name,
                 "supplierCount": result["imported"],
@@ -85,6 +89,7 @@ def upload_base(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="Envie um CSV da CT2 ou XML do MATA020.")
 
         result = import_file_into_base(target, DB_PATH, verbose=True)
+        persist_sqlite(DB_PATH)
         return {
             "file": target.name,
             "months": result["months"],
