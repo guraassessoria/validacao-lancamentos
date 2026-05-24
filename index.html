@@ -32,15 +32,17 @@
         <section id="mainView" class="control-grid" aria-label="Analise de lancamentos">
           <div class="panel upload-panel">
             <div class="upload-actions">
-              <label id="supplierDrop" class="file-drop supplier-drop" for="supplierFileInput" hidden>
-                <span class="file-drop__title">Cadastro Fornecedor</span>
-                <span id="supplierFileName" class="file-drop__meta">Selecionar XML</span>
+              <label id="supplierDrop" class="file-field supplier-drop" for="supplierFileInput" hidden>
+                Cadastro fornecedor
+                <span class="file-drop">
+                  <span id="supplierFileName" class="file-drop__meta">Selecionar XML</span>
+                </span>
               </label>
               <input id="supplierFileInput" type="file" accept=".xml" />
               <button id="importSupplierBtn" class="secondary-button" type="button" hidden disabled>Importar</button>
 
-              <label class="file-drop" for="fileInput">
-                <span class="file-drop__title">Base Contábil</span>
+              <label class="file-field" for="fileInput">
+                <span class="file-drop__title">Base contabil</span>
                 <span id="fileName" class="file-drop__meta">Selecionar CSV/XLSX</span>
               </label>
               <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />

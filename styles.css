@@ -148,7 +148,7 @@ input:disabled {
 .file-drop {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 10px;
   min-height: 42px;
   min-width: 0;
@@ -160,9 +160,29 @@ input:disabled {
   cursor: pointer;
 }
 
+.file-field {
+  min-width: 0;
+}
+
+.file-field .file-drop {
+  width: 100%;
+}
+
+.file-field > .file-drop__meta {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  min-width: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+
 .file-drop__title {
   font-weight: 800;
-  color: var(--accent-strong);
+  color: var(--muted);
 }
 
 .file-drop__meta,
@@ -195,7 +215,7 @@ small {
   display: grid;
   grid-template-columns: minmax(210px, 1fr) minmax(130px, 0.35fr) minmax(210px, 1fr) minmax(130px, 0.35fr) minmax(190px, 0.55fr);
   gap: 10px;
-  align-items: center;
+  align-items: end;
 }
 
 .mapping-grid {
