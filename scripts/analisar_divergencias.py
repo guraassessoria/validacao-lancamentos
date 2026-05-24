@@ -101,22 +101,22 @@ def analyze_file(source, month, db_path, output_path, config=None, recreate=Fals
         if recreate or not can_reuse:
             clear_data(conn)
             if verbose:
-                print("Lendo fornecedores para melhorar a identificacao...")
+                print("Lendo fornecedores para melhorar a identificacao...", flush=True)
             config["supplier_catalog"] = load_supplier_catalog(conn)
-            supplier_lookup = build_supplier_lookup(source, config)
+            supplier_lookup = build_supplier_lookup(source, config, verbose=verbose)
             if verbose:
-                print("Importando lancamentos de resultado para o SQLite...")
-            imported = import_result_entries(conn, source, config, supplier_lookup)
+                print("Importando lancamentos de resultado para o SQLite...", flush=True)
+            imported = import_result_entries(conn, source, config, supplier_lookup, verbose=verbose)
             save_metadata(conn, source, imported)
             if verbose:
-                print(f"{imported:,}".replace(",", ".") + " lancamentos de resultado importados.")
+                print(f"{imported:,}".replace(",", ".") + " lancamentos de resultado importados.", flush=True)
         else:
             imported = int(get_metadata(conn, "linhas_resultado") or 0)
             if verbose:
-                print("Usando dados ja importados no SQLite.")
+                print("Usando dados ja importados no SQLite.", flush=True)
 
         if verbose:
-            print("Gerando divergencias...")
+            print("Gerando divergencias...", flush=True)
         total = export_divergences(conn, config["month"], output_path)
 
     return {
@@ -150,8 +150,9 @@ def import_file_into_base(source, db_path, config=None, verbose=False):
         create_supplier_schema(conn)
 
         if verbose:
-            print("Identificando meses do arquivo...")
-        months = collect_months(source)
+            print("Identificando meses e fornecedores do arquivo...", flush=True)
+        config["supplier_catalog"] = load_supplier_catalog(conn)
+        months, supplier_lookup = scan_months_and_supplier_lookup(source, config, verbose=verbose)
         if not months:
             raise ValueError("Nenhum mes valido encontrado no arquivo.")
 
@@ -161,13 +162,8 @@ def import_file_into_base(source, db_path, config=None, verbose=False):
         conn.commit()
 
         if verbose:
-            print("Lendo fornecedores para melhorar a identificacao...")
-        config["supplier_catalog"] = load_supplier_catalog(conn)
-        supplier_lookup = build_supplier_lookup(source, config)
-
-        if verbose:
-            print("Importando lancamentos de resultado para a base fixa...")
-        imported = import_result_entries(conn, source, config, supplier_lookup)
+            print("Importando lancamentos de resultado para a base fixa...", flush=True)
+        imported = import_result_entries(conn, source, config, supplier_lookup, verbose=verbose)
 
         imported_at = datetime.now().isoformat(timespec="seconds")
         conn.executemany(
@@ -502,15 +498,27 @@ def get_metadata(conn, key):
     return row[0] if row else ""
 
 
-def build_supplier_lookup(source, config):
+def scan_months_and_supplier_lookup(source, config, verbose=False):
     by_invoice = defaultdict(list)
     legal_names = []
+    months = set()
+    columns = None
+    scanned = 0
 
     for row in iter_main_rows(source):
+        scanned += 1
+        if columns is None:
+            columns = resolve_columns(row.keys())
+        date = parse_date(row.get(columns["date"]))
+        if date:
+            months.add(date[:7])
+
         history = get_history(row)
         invoice = extract_invoice_number(history)
         supplier = extract_supplier_from_history(history, config["ignored_words"])
         if not supplier["key"] or len(supplier["key"]) < 5:
+            if verbose and scanned % 100000 == 0:
+                print(f"Leitura inicial: {scanned:,} linhas principais...".replace(",", "."), flush=True)
             continue
 
         if invoice and not any(item["key"] == supplier["key"] for item in by_invoice[invoice]):
@@ -519,19 +527,29 @@ def build_supplier_lookup(source, config):
         if has_legal_suffix(supplier["key"]) and not any(item["key"] == supplier["key"] for item in legal_names):
             legal_names.append(supplier)
 
-    return {
+        if verbose and scanned % 100000 == 0:
+            print(f"Leitura inicial: {scanned:,} linhas principais...".replace(",", "."), flush=True)
+
+    return sorted(months), {
         "by_invoice": by_invoice,
         "legal_names": legal_names,
         "supplier_catalog": config.get("supplier_catalog"),
     }
 
 
-def import_result_entries(conn, source, config, supplier_lookup):
+def build_supplier_lookup(source, config, verbose=False):
+    _months, supplier_lookup = scan_months_and_supplier_lookup(source, config, verbose=verbose)
+    return supplier_lookup
+
+
+def import_result_entries(conn, source, config, supplier_lookup, verbose=False):
     columns = None
     batch = []
     total = 0
+    scanned = 0
 
     for row in iter_main_rows(source):
+        scanned += 1
         if columns is None:
             columns = resolve_columns(row.keys())
 
@@ -595,6 +613,12 @@ def import_result_entries(conn, source, config, supplier_lookup):
 
         if len(batch) >= 5000:
             total += insert_batch(conn, batch)
+            if verbose:
+                print(
+                    f"Importacao: {scanned:,} linhas lidas, {total:,} lancamentos de resultado gravados..."
+                    .replace(",", "."),
+                    flush=True,
+                )
             batch.clear()
 
     if batch:
