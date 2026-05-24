@@ -40,7 +40,7 @@ Variaveis para Render + Neon:
 - `DATABASE_URL`: connection string da Neon.
 - `APP_PASSWORD`: senha de acesso ao sistema.
 - `DATA_DIR`: pode ficar como `/tmp/validador-ct2`.
-- `MAX_UPLOAD_MB`: limite maximo para uploads, padrao `100`.
+- `MAX_UPLOAD_MB`: limite maximo para uploads, padrao `200`.
 
 Em ambiente Render, `APP_PASSWORD` e obrigatoria. Se ela nao estiver definida, o
 backend nao inicia aberto por acidente.
