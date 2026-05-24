@@ -870,12 +870,6 @@ def is_result_account(account, prefixes):
 
 def comparable_account(account, occurrence):
     clean = clean_account(account)
-    occurrence = clean_account(occurrence)
-    if len(clean) >= 4 and clean[:3] in {"321", "322"} and occurrence:
-        expected_prefix = "322" if occurrence == "18" else "321"
-        if clean.startswith(expected_prefix):
-            return clean[3:]
-        return clean
     if len(clean) >= 4 and clean[:3] in {"321", "322"}:
         return clean[3:]
     return clean
