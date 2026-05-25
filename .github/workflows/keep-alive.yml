@@ -2,7 +2,7 @@ name: Keep Render Alive
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -13,8 +13,14 @@ jobs:
     steps:
       - name: Ping
         run: |
-          STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" --max-time 120 --retry 2 --retry-delay 10 "$RENDER_URL/api/health")
+          START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "Ping started at $START"
+          echo "URL: $RENDER_URL/api/health"
+
+          STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" --max-time 120 --retry 3 --retry-delay 15 --retry-all-errors "$RENDER_URL/api/health")
           echo "Status: $STATUS"
+
           if [ "$STATUS" != "200" ]; then
-            echo "Aviso: resposta inesperada ($STATUS)"
+            echo "Resposta inesperada ($STATUS)"
+            exit 1
           fi
