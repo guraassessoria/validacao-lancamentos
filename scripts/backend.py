@@ -97,6 +97,11 @@ def health():
     return {"status": "ok", "neon": neon_enabled()}
 
 
+@app.head("/api/health")
+def health_head():
+    return Response(status_code=200)
+
+
 @app.get("/api/base")
 def base_summary():
     return get_base_summary(DB_PATH)
