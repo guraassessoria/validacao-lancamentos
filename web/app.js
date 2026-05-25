@@ -523,13 +523,30 @@ function uploadFileWithProgress(file, label, kind) {
 
 function updateBaseSummary(base) {
   const months = base.months || [];
+  const supplierCount = Number(base.supplier_count || 0);
+  const accountCount = Number(base.account_count || 0);
   setMetric("totalRows", base.total_entries || 0);
   setMetric("resultRows", base.total_entries || 0);
   setMetric("currentRows", months.length);
   setMetric("issueRows", 0);
-  selectors.sampleInfo.textContent = months.length
-    ? `Base fixa com ${months.length.toLocaleString("pt-BR")} meses, ${Number(base.supplier_count || 0).toLocaleString("pt-BR")} fornecedores e ${Number(base.account_count || 0).toLocaleString("pt-BR")} contas: ${months.map((item) => item.month).join(", ")}.`
-    : "Base fixa vazia. Importe um CSV da CT2 para comecar.";
+  selectors.supplierFileName.textContent = supplierCount
+    ? `${supplierCount.toLocaleString("pt-BR")} fornecedores carregados`
+    : "Selecionar XML";
+  selectors.accountPlanFileName.textContent = accountCount
+    ? `${accountCount.toLocaleString("pt-BR")} contas carregadas`
+    : "Selecionar CSV/XML";
+  selectors.sampleInfo.textContent = formatBaseSummary(months, supplierCount, accountCount);
+}
+
+function formatBaseSummary(months, supplierCount, accountCount) {
+  const registrations = `${supplierCount.toLocaleString("pt-BR")} fornecedores e ${accountCount.toLocaleString("pt-BR")} contas`;
+  if (months.length) {
+    return `Base fixa com ${months.length.toLocaleString("pt-BR")} meses, ${registrations}: ${months.map((item) => item.month).join(", ")}.`;
+  }
+  if (supplierCount || accountCount) {
+    return `Cadastros carregados: ${registrations}. Importe um CSV da CT2 para comecar.`;
+  }
+  return "Base fixa vazia. Importe os cadastros e um CSV da CT2 para comecar.";
 }
 
 function normalizeServerIssue(row) {
