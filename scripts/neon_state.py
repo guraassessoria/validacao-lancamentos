@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import threading
 from pathlib import Path
 
@@ -26,6 +27,7 @@ def hydrate_sqlite(db_path):
         if not row:
             return False
         db_path.write_bytes(row[0])
+        remove_sqlite_sidecars(db_path)
         return True
 
 
@@ -37,6 +39,7 @@ def persist_sqlite(db_path):
     if not db_path.exists():
         return False
 
+    checkpoint_sqlite(db_path)
     payload = db_path.read_bytes()
     with _LOCK, psycopg.connect(os.environ["DATABASE_URL"]) as conn:
         ensure_schema(conn)
@@ -51,6 +54,16 @@ def persist_sqlite(db_path):
         )
         conn.commit()
         return True
+
+
+def checkpoint_sqlite(db_path):
+    with sqlite3.connect(db_path, timeout=60) as conn:
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+
+def remove_sqlite_sidecars(db_path):
+    for suffix in ("-wal", "-shm"):
+        db_path.with_name(f"{db_path.name}{suffix}").unlink(missing_ok=True)
 
 
 def ensure_schema(conn):
