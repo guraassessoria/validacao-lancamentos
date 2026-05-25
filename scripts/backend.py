@@ -33,6 +33,9 @@ app = FastAPI(title="Validador CT2", version="1.0.0")
 
 @app.middleware("http")
 async def basic_auth(request: Request, call_next):
+    if request.url.path == "/api/health":
+        return add_security_headers(await call_next(request))
+
     password = os.getenv("APP_PASSWORD", "")
     if running_online() and not password:
         return Response("APP_PASSWORD nao configurado.", status_code=503)
